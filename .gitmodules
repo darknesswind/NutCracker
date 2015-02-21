@@ -1,0 +1,3 @@
+[submodule "Qt"]
+	path = Qt
+	url = https://github.com/darknesswind/QtStaticLib.git
