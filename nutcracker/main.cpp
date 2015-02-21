@@ -1,4 +1,4 @@
-#include "NutScript.h"
+﻿#include "NutScript.h"
 #include <iostream>
 #include <fstream>
 
@@ -33,8 +33,8 @@ int Compare( const char* file1, const char* file2, bool general )
 
 		if (general)
 		{
-			std::ofstream nullStream("null");
-			bool result = s1.GetMain().DoCompare(s2.GetMain(), "", nullStream);
+			QTextStream stream;
+			bool result = s1.GetMain().DoCompare(s2.GetMain(), "", stream);
 
 			if (result)
 				std::cout << "[         ]";
@@ -47,7 +47,8 @@ int Compare( const char* file1, const char* file2, bool general )
 		}
 		else
 		{
-			bool result = s1.GetMain().DoCompare(s2.GetMain(), "", std::cout);
+			QTextStream stream(stdout);
+			bool result = s1.GetMain().DoCompare(s2.GetMain(), "", stream);
 			std::cout << std::endl << "Result: " << (result ? "Ok" : "ERROR") << std::endl;
 
 			return result ? 0 : -1;
@@ -60,20 +61,23 @@ int Compare( const char* file1, const char* file2, bool general )
 	}
 }
 
-
+static QString g_textBuff;
 void DebugFunctionPrint( const NutFunction& function )
 {
 	g_DebugMode = true;
-	function.GenerateFunctionSource(0, std::cout);
+	g_textBuff.clear();
+	QTextStream stream(&g_textBuff);
+	stream.setCodec("UTF-8");
+	function.GenerateFunctionSource(0, stream);
+	std::cout << g_textBuff.toLocal8Bit().data();
 }
-
 
 int Decompile( const char* file, const char* debugFunction )
 {
 	try
 	{
 		NutScript script;
-		script.LoadFromFile(file);
+		script.LoadFromFile(QString::fromLocal8Bit(file));
 
 		if (debugFunction)
 		{
@@ -96,14 +100,17 @@ int Decompile( const char* file, const char* debugFunction )
 			}
 		}
 
-		script.GetMain().GenerateBodySource(0, std::cout);
+		g_textBuff.clear();
+		QTextStream stream(&g_textBuff);
+		script.GetMain().GenerateBodySource(0, stream);
+		std::cout << g_textBuff.toLocal8Bit().data();
 	}
 	catch( std::exception& ex )
 	{
+		std::cout << g_textBuff.toLocal8Bit().data();
 		std::cout << "Error: " << ex.what() << std::endl;
 		return -1;
 	}
-
 	return 0;
 }
 
@@ -149,7 +156,9 @@ int main( int argc, char* argv[] )
 		}
 		else
 		{
-			return Decompile(argv[i], debugFunction);
+			int res = Decompile(argv[i], debugFunction);
+			system("pause");
+			return res;
 		}
 	}
 

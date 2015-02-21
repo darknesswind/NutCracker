@@ -1,15 +1,15 @@
-
+﻿
 #include "SqObject.h"
-#include <string>
+#include <QTextStream>
 using namespace std;
 
 
 // ***********************************************************************************************************************
-void PrintEscapedString( std::ostream& out, const std::string& str )
+void PrintEscapedString(QTextStream& out, const QString& str)
 {
-	for( basic_string <char>::const_iterator i = str.begin(); i != str.end(); ++i )
+	for( auto i = str.begin(); i != str.end(); ++i )
 	{
-		switch(*i)
+		switch(i->unicode())
 		{
 			case '\r':	out << "\\r";			break;
 			case '\n':	out << "\\n";			break;
@@ -45,6 +45,7 @@ void SqObject::Load( BinaryReader& reader )
 			break;
 
 		case TypeInteger:
+		case TypeBool:
 			m_integer = reader.ReadUInt32();
 			break;
 
@@ -73,6 +74,7 @@ const char* SqObject::GetTypeName( void ) const
 		case TypeNull:		return "NULL";
 		case TypeString:	return "String";
 		case TypeInteger:	return "Integer";
+		case TypeBool:		return "Bool";
 		case TypeFloat:		return "Float";
 		default:			return "Unknown";
 	}
@@ -80,7 +82,7 @@ const char* SqObject::GetTypeName( void ) const
 
 
 // ***********************************************************************************************************************
-const std::string& SqObject::GetString( void ) const
+const  QString& SqObject::GetString(void) const
 {
 	if (m_type != TypeString && m_type != TypeNull)
 		throw Error("Request of String in object of type %s.", GetTypeName());
@@ -92,7 +94,7 @@ const std::string& SqObject::GetString( void ) const
 // ***********************************************************************************************************************
 unsigned int SqObject::GetInteger( void ) const
 {
-	if (m_type != TypeInteger && m_type != TypeNull)
+	if (m_type != TypeInteger && m_type != TypeNull && m_type != TypeBool)
 		throw Error("Request of Integer in object of type %s.", GetTypeName());
 
 	return m_integer;
@@ -134,9 +136,9 @@ bool SqObject::operator == ( const SqObject& other ) const
 }
 
 // ***********************************************************************************************************************
-std::ostream& operator << ( std::ostream& os, const SqObject& obj )
+QTextStream& operator<<(QTextStream& os, const SqObject& obj)
 {
-	switch(obj.m_type)
+	switch (obj.m_type)
 	{
 	default:
 		os << "<Unknown>";

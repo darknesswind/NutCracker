@@ -1,9 +1,7 @@
-
+﻿
 #pragma once
 
-#include <ostream>
-#include <string>
-
+#include <QTextStream>
 // ******************************************************************************
 struct indent
 {
@@ -11,10 +9,10 @@ struct indent
 
 	indent( int n ) : _n(n) {}
 
-	friend std::ostream& operator << ( std::ostream& os, const indent& _i )
+	friend QTextStream& operator << (QTextStream& os, const indent& _i)
 	{
 		for(int i = 0; i < _i._n; ++i)
-			os.put('\t');
+			os << '\t';
 
 		return os;
 	}
@@ -28,27 +26,29 @@ struct spaces
 
 	spaces( int n ) : _n(n) {}
 
-	friend std::ostream& operator << ( std::ostream& os, const spaces& _i )
+	friend QTextStream& operator<< (QTextStream& os, const spaces& _i)
 	{
 		for(int i = 0; i < _i._n; ++i)
-			os.put(' ');
+			os << ' ';
 
 		return os;
 	}
 };
 
 // ******************************************************************************
-inline void AssureIndents( std::string& text, int n )
+inline void AssureIndents( QString& text, int n )
 {
-	std::string::size_type pos = 0;
-	while(pos < text.size())
+	QString::size_type pos = 0;
+	QString indents(n, '\t');
+
+	while (pos < text.size())
 	{
-		pos = text.find('\n', pos);
-		if (pos == std::string::npos)
+		pos = text.indexOf('\n', pos);
+		if (pos < 0)
 			break;
 
 		pos += 1;
-		text.insert(pos, n, '\t');
+		text.insert(pos, indents);
 		pos += n;
 	}
 }

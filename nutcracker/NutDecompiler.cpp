@@ -1,7 +1,7 @@
-
-#include <iostream>
-#include <sstream>
-#include <iomanip>
+﻿
+// #include <iostream>
+// #include <sstream>
+// #include <iomanip>
 #include <cassert>
 #include <algorithm>
 
@@ -15,67 +15,68 @@
 
 enum Opcode
 {
-	OP_LINE = 0,
-	OP_LOAD,
-	OP_LOADINT,
-	OP_LOADFLOAT,
-	OP_DLOAD,
-	OP_TAILCALL,
-	OP_CALL,
-	OP_PREPCALL,
-	OP_PREPCALLK,
-	OP_GETK,
-	OP_MOVE,
-	OP_NEWSLOT,
-	OP_DELETE,
-	OP_SET,
-	OP_GET,
-	OP_EQ,
-	OP_NE,
-	OP_ARITH,
-	OP_BITW,
-	OP_RETURN,
-	OP_LOADNULLS,
-	OP_LOADROOTTABLE,
-	OP_LOADBOOL,
-	OP_DMOVE,
-	OP_JMP,
-	OP_JNZ,
-	OP_JZ,
-	OP_LOADFREEVAR,
-	OP_VARGC,
-	OP_GETVARGV,
-	OP_NEWTABLE,
-	OP_NEWARRAY,
-	OP_APPENDARRAY,
-	OP_GETPARENT,
-	OP_COMPARITH,
-	OP_COMPARITHL,
-	OP_INC,
-	OP_INCL,
-	OP_PINC,
-	OP_PINCL,
-	OP_CMP,
-	OP_EXISTS,
-	OP_INSTANCEOF,
-	OP_AND,
-	OP_OR,
-	OP_NEG,
-	OP_NOT,
-	OP_BWNOT,
-	OP_CLOSURE,
-	OP_YIELD,
-	OP_RESUME,
-	OP_FOREACH,
-	OP_POSTFOREACH,
-	OP_DELEGATE,
-	OP_CLONE,
-	OP_TYPEOF,
-	OP_PUSHTRAP,
-	OP_POPTRAP,
-	OP_THROW,
-	OP_CLASS,
-	OP_NEWSLOTA
+	OP_LINE = 0x00,
+	OP_LOAD = 0x01,
+	OP_LOADINT = 0x02,
+	OP_LOADFLOAT = 0x03,
+	OP_DLOAD = 0x04,
+	OP_TAILCALL = 0x05,
+	OP_CALL = 0x06,
+	OP_PREPCALL = 0x07,
+	OP_PREPCALLK = 0x08,
+	OP_GETK = 0x09,
+	OP_MOVE = 0x0A,
+	OP_NEWSLOT = 0x0B,
+	OP_DELETE = 0x0C,
+	OP_SET = 0x0D,
+	OP_GET = 0x0E,
+	OP_EQ = 0x0F,
+	OP_NE = 0x10,
+	OP_ADD = 0x11,
+	OP_SUB = 0x12,
+	OP_MUL = 0x13,
+	OP_DIV = 0x14,
+	OP_MOD = 0x15,
+	OP_BITW = 0x16,
+	OP_RETURN = 0x17,
+	OP_LOADNULLS = 0x18,
+	OP_LOADROOT = 0x19,
+	OP_LOADBOOL = 0x1A,
+	OP_DMOVE = 0x1B,
+	OP_JMP = 0x1C,
+	//OP_JNZ=				0x1D,
+	OP_JCMP = 0x1D,
+	OP_JZ = 0x1E,
+	OP_SETOUTER = 0x1F,
+	OP_GETOUTER = 0x20,
+	OP_NEWOBJ = 0x21,
+	OP_APPENDARRAY = 0x22,
+	OP_COMPARITH = 0x23,
+	OP_INC = 0x24,
+	OP_INCL = 0x25,
+	OP_PINC = 0x26,
+	OP_PINCL = 0x27,
+	OP_CMP = 0x28,
+	OP_EXISTS = 0x29,
+	OP_INSTANCEOF = 0x2A,
+	OP_AND = 0x2B,
+	OP_OR = 0x2C,
+	OP_NEG = 0x2D,
+	OP_NOT = 0x2E,
+	OP_BWNOT = 0x2F,
+	OP_CLOSURE = 0x30,
+	OP_YIELD = 0x31,
+	OP_RESUME = 0x32,
+	OP_FOREACH = 0x33,
+	OP_POSTFOREACH = 0x34,
+	OP_CLONE = 0x35,
+	OP_TYPEOF = 0x36,
+	OP_PUSHTRAP = 0x37,
+	OP_POPTRAP = 0x38,
+	OP_THROW = 0x39,
+	OP_NEWSLOTA = 0x3A,
+	OP_GETBASE = 0x3B,
+	OP_CLOSE = 0x3C,
 };
 
 enum BitWiseOpcode 
@@ -115,25 +116,25 @@ const char* OpcodeNames[] =
 	"OP_GET",
 	"OP_EQ",
 	"OP_NE",
-	"OP_ARITH",
+	"OP_ADD",
+	"OP_SUB",
+	"OP_MUL",
+	"OP_DIV",
+	"OP_MOD",
 	"OP_BITW",
 	"OP_RETURN",
 	"OP_LOADNULLS",
-	"OP_LOADROOTTABLE",
+	"OP_LOADROOT",
 	"OP_LOADBOOL",
 	"OP_DMOVE",
 	"OP_JMP",
-	"OP_JNZ",
+	"OP_JCMP",
 	"OP_JZ",
-	"OP_LOADFREEVAR",
-	"OP_VARGC",
-	"OP_GETVARGV",
-	"OP_NEWTABLE",
-	"OP_NEWARRAY",
+	"OP_SETOUTER",
+	"OP_GETOUTER",
+	"OP_NEWOBJ",
 	"OP_APPENDARRAY",
-	"OP_GETPARENT",
 	"OP_COMPARITH",
-	"OP_COMPARITHL",
 	"OP_INC",
 	"OP_INCL",
 	"OP_PINC",
@@ -151,14 +152,14 @@ const char* OpcodeNames[] =
 	"OP_RESUME",
 	"OP_FOREACH",
 	"OP_POSTFOREACH",
-	"OP_DELEGATE",
 	"OP_CLONE",
 	"OP_TYPEOF",
 	"OP_PUSHTRAP",
 	"OP_POPTRAP",
 	"OP_THROW",
-	"OP_CLASS",
-	"OP_NEWSLOTA"
+	"OP_NEWSLOTA",
+	"OP_GETBASE",
+	"OP_CLOSE",
 };
 
 const int BitWiseOpcodeNames[] =
@@ -227,10 +228,10 @@ public:
 		m_BlockState.blockStart = -1;
 		m_BlockState.blockEnd = parent.m_Instructions.size() + 2;
 
-		// Find all JNZ instructions in code with beck jump - this will be oure do..while loops
-		for( int i = 0; i < (int)parent.m_Instructions.size(); ++i)
-			if (parent.m_Instructions[i].op == OP_JNZ && parent.m_Instructions[i].arg1 < 0)
-				m_JNZInstructions.push_back(i);
+// 		// Find all JNZ instructions in code with beck jump - this will be oure do..while loops
+// 		for( int i = 0; i < (int)parent.m_Instructions.size(); ++i)
+// 			if (parent.m_Instructions[i].op == OP_JNZ && parent.m_Instructions[i].arg1 < 0)
+// 				m_JNZInstructions.push_back(i);
 	}
 
 	int PopJNZInstructionWithTarget( int address )
@@ -327,10 +328,8 @@ public:
 		if (!m_Stack[pos].expression)
 		{
 			// Stack variable is not initialized - temporary make marker for it
-			std::ostringstream marker;
-			marker << "$[stack offset " << pos << "]";
-
-			return ExpressionPtr(new VariableExpression(marker.str()));
+			return ExpressionPtr(new VariableExpression(
+				QString("$[stack offset %1]").arg(pos)));
 		}
 		else if (!m_Stack[pos].pendingStatements.empty())
 		{
@@ -342,6 +341,11 @@ public:
 		}
 			
 		return m_Stack[pos].expression;
+	}
+
+	ExpressionPtr GetLastVar()
+	{
+		return GetVar(m_Stack.size() - 1);
 	}
 
 	bool InitVar( int pos, ExpressionPtr exp = ExpressionPtr(), bool foreachInit = false )
@@ -394,6 +398,9 @@ public:
 
 	void SetVar( int pos, ExpressionPtr exp, bool expIsStatementLike = false )
 	{
+		if (0xFF == pos)
+			pos = m_Stack.size() - 1;
+
 		if (pos < 0 || pos >= (int)m_Stack.size())
 			throw Error("Accessing non valid stack position.");
 
@@ -490,7 +497,7 @@ public:
 		}
 	}
 
-	void PrintOutput( std::ostream& out, int n )
+	void PrintOutput( QTextStream& out, int n )
 	{
 		m_Block->Postprocess();
 		m_Block->GenerateBlockContentCode(out, n);
@@ -508,9 +515,10 @@ public:
 
 	void PushUnknownOpcode( void )
 	{
-		std::ostringstream text;
-		m_Parent.PrintOpcode(text, IP() - 1, m_Parent.m_Instructions[IP() - 1]);
-		PushStatement(StatementPtr(new CommentStatement(text.str())));
+		QString text;
+		QTextStream buff(&text);
+		m_Parent.PrintOpcode(buff, IP() - 1, m_Parent.m_Instructions[IP() - 1]);
+		PushStatement(StatementPtr(new CommentStatement(text)));
 	}
 };
 
@@ -526,8 +534,8 @@ private:
 
 public:
 	explicit FunctionGeneratingExpression( int functionIndex, const NutFunction& function )
-	: FunctionExpression(functionIndex)
-	, m_Function(function)
+		: FunctionExpression(functionIndex)
+		, m_Function(function)
 	{
 	}
 
@@ -536,7 +544,7 @@ public:
 		m_Defaults.push_back(value);
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
 		if (g_DebugMode)
 		{
@@ -544,12 +552,13 @@ public:
 			return;
 		}
 		
-		std::vector< std::string > defaults;
-		for( vector<ExpressionPtr>::const_iterator i = m_Defaults.begin(); i != m_Defaults.end(); ++i)
+		std::vector< QString > defaults;
+		for( std::vector<ExpressionPtr>::const_iterator i = m_Defaults.begin(); i != m_Defaults.end(); ++i)
 		{
-			std::ostringstream defaultBuffer;
+			defaults.push_back(QString());
+			QTextStream defaultBuffer(&defaults.back());
 			(*i)->GenerateCode(defaultBuffer, n + 1);
-			defaults.push_back(defaultBuffer.str());
+			
 		}
 
 		m_Function.GenerateFunctionSource(n, out, m_name, defaults);
@@ -672,9 +681,9 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			}
 			break;
 
-		case OP_ARITH:
-			state.SetVar(arg0, ExpressionPtr(new BinaryOperatorExpression(arg3, state.GetVar(arg2), state.GetVar(arg1))));
-			break;
+// 		case OP_ARITH:
+// 			state.SetVar(arg0, ExpressionPtr(new BinaryOperatorExpression(arg3, state.GetVar(arg2), state.GetVar(arg1))));
+// 			break;
 
 		case OP_BITW:
 			state.SetVar(arg0, ExpressionPtr(new BinaryOperatorExpression(BitWiseOpcodeNames[arg3], state.GetVar(arg2), state.GetVar(arg1))));
@@ -697,7 +706,7 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			}
 			break;
 
-		case OP_LOADROOTTABLE:
+		case OP_LOADROOT:
 			state.SetVar(arg0, ExpressionPtr(new RootTableExpression));
 			break;
 
@@ -720,30 +729,34 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			DecompileJumpZeroInstruction(state, arg0, arg1);
 			break;
 
-		case OP_LOADFREEVAR:
-			state.SetVar(arg0, ExpressionPtr(new VariableExpression(m_OuterValues[arg1].name.GetString())));
-			break;
-
-		case OP_VARGC:
-			state.SetVar(arg0, ExpressionPtr(new LiteralConstantExpression( "vargc" )));
-			break;
-
-		case OP_GETVARGV:
-			state.SetVar(arg0, ExpressionPtr(new ArrayIndexingExpression(ExpressionPtr(new LiteralConstantExpression( "vargv" )),state.GetVar(arg1))));
-			break;
-
-		case OP_NEWTABLE:
-			state.SetVar(arg0, ExpressionPtr(new NewTableExpression));
-			break;
-
-		case OP_NEWARRAY:
-			state.SetVar(arg0, ExpressionPtr(new NewArrayExpression));
-			break;
+// 		case OP_LOADFREEVAR:
+// 			state.SetVar(arg0, ExpressionPtr(new VariableExpression(m_OuterValues[arg1].name.GetString())));
+// 			break;
+// 
+// 		case OP_VARGC:
+// 			state.SetVar(arg0, ExpressionPtr(new LiteralConstantExpression( "vargc" )));
+// 			break;
+// 
+// 		case OP_GETVARGV:
+// 			state.SetVar(arg0, ExpressionPtr(new ArrayIndexingExpression(ExpressionPtr(new LiteralConstantExpression( "vargv" )),state.GetVar(arg1))));
+// 			break;
+// 
+// 		case OP_NEWTABLE:
+// 			state.SetVar(arg0, ExpressionPtr(new NewTableExpression));
+// 			break;
+// 
+// 		case OP_NEWARRAY:
+// 			state.SetVar(arg0, ExpressionPtr(new NewArrayExpression));
+// 			break;
 
 		case OP_APPENDARRAY:
 			{
 				ExpressionPtr arrayExp = state.GetVar(arg0);
-				ExpressionPtr valueExp = (arg3 != 0) ? ExpressionPtr(new ConstantExpression(m_Literals[arg1])) : state.GetVar(arg1);
+				ExpressionPtr valueExp;
+				if (arg3 == 0xFF)
+					valueExp = state.GetLastVar();
+				else
+					valueExp = (arg3 != 0) ? ExpressionPtr(new ConstantExpression(m_Literals[arg1])) : state.GetVar(arg1);
 
 				if (arrayExp->GetType() == Exp_NewArrayExpression)
 				{
@@ -762,9 +775,9 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			}
 			break;
 
-		case OP_GETPARENT:
-			state.SetVar(arg0, ExpressionPtr(new ArrayIndexingExpression(state.GetVar(arg1), ExpressionPtr(new ConstantExpression("parent")))));
-			break;
+// 		case OP_GETPARENT:
+// 			state.SetVar(arg0, ExpressionPtr(new ArrayIndexingExpression(state.GetVar(arg1), ExpressionPtr(new ConstantExpression("parent")))));
+// 			break;
 		
 		case OP_COMPARITH:
 			{
@@ -776,12 +789,12 @@ void NutFunction::DecompileStatement( VMState& state ) const
 
 
 
-		case OP_COMPARITHL:
-			{
-				ExpressionPtr opExp = ExpressionPtr(new BinaryOperatorExpression((arg3 << 8) | '=', state.GetVar(arg1), state.GetVar(arg2)));
-				state.SetVar(arg0, opExp, true);
-			}
-			break;
+// 		case OP_COMPARITHL:
+// 			{
+// 				ExpressionPtr opExp = ExpressionPtr(new BinaryOperatorExpression((arg3 << 8) | '=', state.GetVar(arg1), state.GetVar(arg2)));
+// 				state.SetVar(arg0, opExp, true);
+// 			}
+// 			break;
 			
 		case OP_INC:
 		case OP_INCL:
@@ -964,9 +977,9 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			// Ignore - used always after OP_FOREACH for generator iteration
 			break;
 
-		case OP_DELEGATE:
-			state.SetVar(arg0, ExpressionPtr(new DelegateOperatorExpression(state.GetVar(arg2), state.GetVar(arg1))), true);
-			break;
+// 		case OP_DELEGATE:
+// 			state.SetVar(arg0, ExpressionPtr(new DelegateOperatorExpression(state.GetVar(arg2), state.GetVar(arg1))), true);
+// 			break;
 		
 		case OP_CLONE:
 			state.SetVar(arg0, ExpressionPtr(new UnaryOperatorExpression(OperatorExpression::OPER_CLONE, state.GetVar(arg1))));
@@ -1003,7 +1016,7 @@ void NutFunction::DecompileStatement( VMState& state ) const
 
 					// Search for local variable of exception handler
 					state.AtStack(arg0) =  ExpressionPtr();
-					std::string varName;
+					QString varName;
 
 					for( vector<NutFunction::LocalVarInfo>::const_iterator i = m_Locals.begin(); i != m_Locals.end(); ++i )
 						if (i->pos == arg0 && i->start_op == state.IP())
@@ -1038,20 +1051,20 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			break;
 
 
-		case OP_CLASS:
-			{
-				ExpressionPtr attributes;
-				ExpressionPtr baseClass;
-
-				if (arg1 != -1)
-					baseClass = state.GetVar(arg1);
-
-				if (arg2 != 0xff)
-					attributes = state.GetVar(arg2);
-
-				state.SetVar(arg0, ExpressionPtr(new NewClassExpression(baseClass, attributes)));
-			}
-			break;
+// 		case OP_CLASS:
+// 			{
+// 				ExpressionPtr attributes;
+// 				ExpressionPtr baseClass;
+// 
+// 				if (arg1 != -1)
+// 					baseClass = state.GetVar(arg1);
+// 
+// 				if (arg2 != 0xff)
+// 					attributes = state.GetVar(arg2);
+// 
+// 				state.SetVar(arg0, ExpressionPtr(new NewClassExpression(baseClass, attributes)));
+// 			}
+// 			break;
 
 		case OP_NEWSLOTA:
 		case OP_NEWSLOT:
@@ -1111,7 +1124,24 @@ void NutFunction::DecompileStatement( VMState& state ) const
 				}
 			}
 			break;
-
+		case OP_ADD:
+			state.SetVar(arg0, ExpressionPtr(new BinaryOperatorExpression('+', state.GetVar(arg2), state.GetVar(arg1))));
+			break;
+		case OP_SUB:
+			state.SetVar(arg0, ExpressionPtr(new BinaryOperatorExpression('-', state.GetVar(arg2), state.GetVar(arg1))));
+			break;
+		case OP_MUL:
+			state.SetVar(arg0, ExpressionPtr(new BinaryOperatorExpression('*', state.GetVar(arg2), state.GetVar(arg1))));
+			break;
+		case OP_DIV:
+			state.SetVar(arg0, ExpressionPtr(new BinaryOperatorExpression('/', state.GetVar(arg2), state.GetVar(arg1))));
+			break;
+		case OP_MOD:
+			state.SetVar(arg0, ExpressionPtr(new BinaryOperatorExpression('%', state.GetVar(arg2), state.GetVar(arg1))));
+			break;
+		case OP_LINE:	// mark line number;
+			break;
+		case OP_JCMP:
 		default:
 			state.PushUnknownOpcode();
 
@@ -1321,13 +1351,13 @@ void NutFunction::DecompileDoWhileLoop( VMState& state, int jumpAddress ) const
 	int destIp = jumpAddress + 1;
 	while(state.IP() < destIp && !state.EndOfInstructions())
 	{
-		if (state.IP() == jumpAddress && m_Instructions[state.IP()].op == OP_JNZ)
-		{
-			// Last jump instruction
-			condition = state.GetVar( static_cast<unsigned char>(m_Instructions[state.IP()].arg0) );
-			state.NextInstruction();
-		}
-		else
+// 		if (state.IP() == jumpAddress && m_Instructions[state.IP()].op == OP_JNZ)
+// 		{
+// 			// Last jump instruction
+// 			condition = state.GetVar( static_cast<unsigned char>(m_Instructions[state.IP()].arg0) );
+// 			state.NextInstruction();
+// 		}
+// 		else
 		{
 			DecompileStatement(state);
 		}
@@ -1556,7 +1586,7 @@ void NutFunction::DecompileSwitchBlock( VMState& state ) const
 
 
 // ***************************************************************************************************************
-void NutFunction::PrintOpcode( std::ostream& out, int pos, const Instruction& op ) const
+void NutFunction::PrintOpcode( QTextStream& out, int pos, const Instruction& op ) const
 {
 	unsigned int code = static_cast<unsigned int>(op.op);
 	const char* codeName;
@@ -1567,10 +1597,10 @@ void NutFunction::PrintOpcode( std::ostream& out, int pos, const Instruction& op
 		codeName = OpcodeNames[code];
 
 	out << "["; 
-	out << std::setw(3) << std::setfill('0') << pos << std::setfill(' ');
+	out << qSetFieldWidth(3) << qSetPadChar('0') << pos << qSetPadChar(' ') << reset;
 	out << "]  " << codeName << spaces(14 - strlen(codeName));
 
-	out << std::setw(5) << (int)op.arg0 << "  ";
+	out << qSetFieldWidth(5) << (int)op.arg0 << "  " << reset;
 
 	switch(code)
 	{
@@ -1580,32 +1610,32 @@ void NutFunction::PrintOpcode( std::ostream& out, int pos, const Instruction& op
 
 		case OP_DLOAD:
 			out << m_Literals[op.arg1];
-			out << std::setw(5) << (int)op.arg2;
+			out << qSetFieldWidth(5) << (int)op.arg2 << reset;
 			out << "  " << m_Literals[ static_cast<unsigned char>(op.arg3) ];
 			break;
 
 		case OP_LOADINT:
-			out << std::setw(5) << op.arg1;
+			out << qSetFieldWidth(5) << op.arg1 << reset;
 			break;
 
 		case OP_LOADFLOAT:
-			out << std::setw(5) << op.arg1_float;
+			out << qSetFieldWidth(5) << op.arg1_float << reset;
 			break;
 
 		case OP_LOADBOOL:
 			out << "  " << (op.arg1 ? "true" : "false");
 			break;
 
-		case OP_ARITH:
-			out << '[' << (char)op.arg3 << "]  ";
-			out << std::setw(5) << (int)op.arg1;
-			out << std::setw(5) << (int)op.arg2;
-			break;
+// 		case OP_ARITH:
+// 			out << '[' << (char)op.arg3 << "]  ";
+// 			out << qSetFieldWidth(5) << (int)op.arg1;
+// 			out << qSetFieldWidth(5) << (int)op.arg2 << reset;
+// 			break;
 
 		case OP_PREPCALLK:
 		case OP_GETK:
 			out << '(' << (int)op.arg2 << ")." << m_Literals[op.arg1].GetString() << "  ";
-			out << std::setw(5) << (int)op.arg3;
+			out << qSetFieldWidth(5) << (int)op.arg3 << reset;
 			break;
 
 
@@ -1613,17 +1643,17 @@ void NutFunction::PrintOpcode( std::ostream& out, int pos, const Instruction& op
 			
 		default:	
 			
-			//out << "  0x" << std::setw(8) << std::setfill('0') << std::setbase(16) << op.arg1 << std::setfill(' ') << std::setbase(10);
-			out << std::setw(5) << (int)op.arg1;
-			out << std::setw(5) << (int)op.arg2;
-			out << std::setw(5) << (int)op.arg3;
+			//out << "  0x" << qSetFieldWidth(8) << qSetPadChar('0') << std::setbase(16) << op.arg1 << qSetPadChar(' ') << std::setbase(10);
+			out << qSetFieldWidth(5) << (int)op.arg1;
+			out << qSetFieldWidth(5) << (int)op.arg2;
+			out << qSetFieldWidth(5) << (int)op.arg3 << reset;
 
 			break;
 	}
 }
 
 // ***************************************************************************************************************
-void NutFunction::GenerateFunctionSource( int n, std::ostream& out, const std::string& name, const std::vector< std::string >& defaults ) const
+void NutFunction::GenerateFunctionSource( int n, QTextStream& out, const QString& name, const std::vector< QString >& defaults ) const
 {
 	if (name != "constructor")
 		out << "function ";
@@ -1653,7 +1683,7 @@ void NutFunction::GenerateFunctionSource( int n, std::ostream& out, const std::s
 		paramsCount += 1;
 	}
 
-	if (m_GotVarParams)
+	if (m_VarParams)
 	{
 		if (paramsCount > 0)
 			out << ", ";
@@ -1677,56 +1707,56 @@ void NutFunction::GenerateFunctionSource( int n, std::ostream& out, const std::s
 		out << " )";
 	}
 
-	out << std::endl;
+	out << endl;
 
-	out << indent(n) << "{" << std::endl;
+	out << indent(n) << "{" << endl;
 
 	GenerateBodySource(n + 1, out);
 
-	out << indent(n) << "}";// << std::endl;
-	//out << std::endl;
-	//out << std::endl;
+	out << indent(n) << "}";// << endl;
+	//out << endl;
+	//out << endl;
 }
 
 
 // ***************************************************************************************************************
-void NutFunction::GenerateBodySource( int n, std::ostream& out ) const
+void NutFunction::GenerateBodySource( int n, QTextStream& out ) const
 {
 	//for( auto i = m_Functions.begin(); i != m_Functions.end(); ++i)
 	//	i->GenerateFunctionSource(n, out, extraInfo);
 
 	if (m_IsGenerator)
-		out << indent(n) << "// Function is a generator." << std::endl;
+		out << indent(n) << "// Function is a generator." << endl;
 
 	if (g_DebugMode)
 	{
-		out << indent(n) << "// Defaults:" << std::endl;
+		out << indent(n) << "// Defaults:" << endl;
 		for( std::vector<int>::const_iterator i = m_DefaultParams.begin(); i != m_DefaultParams.end(); ++i)
-			out << indent(n) << "//\t" << *i << std::endl;
+			out << indent(n) << "//\t" << *i << endl;
 		
-		out << std::endl;
+		out << endl;
 
-		out << indent(n) << "// Literals:" << std::endl;
+		out << indent(n) << "// Literals:" << endl;
 		for( std::vector<SqObject>::const_iterator i = m_Literals.begin(); i != m_Literals.end(); ++i)
-			out << indent(n) << "//\t" << *i << std::endl;
+			out << indent(n) << "//\t" << *i << endl;
 
-		out << std::endl;
+		out << endl;
 
-		out << indent(n) << "// Outer values:" << std::endl;
+		out << indent(n) << "// Outer values:" << endl;
 		for( vector<OuterValueInfo>::const_iterator i = m_OuterValues.begin(); i != m_OuterValues.end(); ++i)
-			out << indent(n) << "//\t" << i->type << "  src=" << i->src << "  name=" << i->name << std::endl; 
+			out << indent(n) << "//\t" << i->type << "  src=" << i->src << "  name=" << i->name << endl; 
 
-		out << std::endl;
+		out << endl;
 
-		out << indent(n) << "// Local identifiers:" << std::endl;
+		out << indent(n) << "// Local identifiers:" << endl;
 		for(vector<NutFunction::LocalVarInfo>::const_reverse_iterator i = m_Locals.rbegin(); i != m_Locals.rend(); ++i)
 		{
 			out << indent(n) << "//   -" << i->name << spaces(10 - i->name.size()) 
-				<< " // pos=" << i->pos << "  start=" << i->start_op << "  end=" << i->end_op << (i->foreachLoopState ? " foreach state" : "") << std::endl;
+				<< " // pos=" << i->pos << "  start=" << i->start_op << "  end=" << i->end_op << (i->foreachLoopState ? " foreach state" : "") << endl;
 		}
 
-		out << std::endl;
-		out << indent(n) << "// Instructions:" << std::endl;
+		out << endl;
+		out << indent(n) << "// Instructions:" << endl;
 
 		int currentLine = 0;
 		vector<LineInfo>::const_iterator lineInfo = m_LineInfos.begin();
@@ -1739,13 +1769,13 @@ void NutFunction::GenerateBodySource( int n, std::ostream& out ) const
 				++lineInfo;
 			}
 
-			out << indent(n) << "// " << std::setfill(' ') << std::setw(5) << currentLine << "  ";
+			out << indent(n) << "// " << qSetPadChar(' ') << qSetFieldWidth(5) << currentLine << "  ";
 			PrintOpcode(out, (int)i, m_Instructions[i]);
-			out << std::endl;
+			out << endl;
 		}
 
-		out << indent(n) << std::endl;
-		out << indent(n) << "// Decompilation attempt:" << std::endl;
+		out << indent(n) << endl;
+		out << indent(n) << "// Decompilation attempt:" << endl;
 	}
 
 	// Crate new state for decompiler virtual machine

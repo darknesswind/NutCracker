@@ -1,16 +1,22 @@
-
+﻿
 #pragma once
 
 #include <iostream>
 #include <algorithm>
 #include "Errors.h"
-
+#include <QTextCodec>
+#include <QDataStream>
 
 // ************************************************************************************************************************************
+typedef void(*ReaderHooker)(void* obj, void* buffer, int size, bool bString);
 class BinaryReader
 {
 private:
-	std::istream& _in;
+	QIODevice* m_pDevice;
+
+	static ReaderHooker fnHook;
+	static void* s_hookObj;
+	static QTextCodec* s_srcCodec;
 
 	// Delete default methods
 	BinaryReader();
@@ -18,148 +24,44 @@ private:
 	BinaryReader& operator = ( const BinaryReader& );
 
 public:
-	explicit BinaryReader( std::istream& in )
-	: _in(in)
+	explicit BinaryReader(QIODevice* in)
+	: m_pDevice(in)
 	{
 	}
 
-
 	// ******************************************************************************
-	unsigned int ReadUInt32( void )
+	unsigned int	ReadUInt32( void ){ return ReadValue<unsigned int>(); }
+	int				ReadInt32( void ){ return ReadValue<int>(); }
+	unsigned short	ReadUInt16( void ){ return ReadValue<unsigned short>(); }
+	short int		ReadInt16( void ){ return ReadValue<short int>(); }
+	char			ReadByte( void ){ return ReadValue<char>(); }
+	float			ReadFloat32( void ){ return ReadValue<float>(); }
+	double			ReadFloat64( void ){ return ReadValue<double>(); }
+	bool			ReadBool( void ) { return ReadValue<bool>(); }
+
+	template <typename T>
+	T ReadValue()
 	{
-		unsigned int value;
+		T value;
 
-		//static_assert(sizeof(value) == 4, "Invalid size of int type");
-
-		_in.read((char*)&value, 4);
-
-		if (_in.fail())
-			throw Error("I/O Error while reading from file.");
+		Read((char*)&value, sizeof(T));
 
 		return value;
 	}
 
-
 	// ******************************************************************************
-	int ReadInt32( void )
-	{
-		int value;
-
-		//static_assert(sizeof(value) == 4, "Invalid size of int type");
-
-		_in.read((char*)&value, 4);
-
-		if (_in.fail())
-			throw Error("I/O Error while reading from file.");
-
-		return value;
-	}
-
-
-	// ******************************************************************************
-	unsigned short int ReadUInt16( void )
-	{
-		unsigned short int value;
-
-		//static_assert(sizeof(value) == 2, "Invalid size of short int type");
-
-		_in.read((char*)&value, 2);
-
-		if (_in.fail())
-			throw Error("I/O Error while reading from file.");
-
-		return value;
-	}
-
-
-	// ******************************************************************************
-	short int ReadInt16( void )
-	{
-		short int value;
-
-		//static_assert(sizeof(value) == 2, "Invalid size of short int type");
-
-		_in.read((char*)&value, 2);
-
-		if (_in.fail())
-			throw Error("I/O Error while reading from file.");
-
-		return value;
-	}
-
-
-	// ******************************************************************************
-	char ReadByte( void )
-	{
-		char value;
-
-		//static_assert(sizeof(value) == 1, "Invalid size of char type");
-
-		_in.read((char*)&value, 1);
-
-		if (_in.fail())
-			throw Error("I/O Error while reading from file.");
-
-		return value;
-	}
-
-
-	// ******************************************************************************
-	float ReadFloat32( void )
-	{
-		float value;
-
-		//static_assert(sizeof(value) == 4, "Invalid size of float type");
-
-		_in.read((char*)&value, 4);
-
-		if (_in.fail())
-			throw Error("I/O Error while reading from file.");
-
-		return value;
-	}
-
-
-	// ******************************************************************************
-	double ReadFloat64( void )
-	{
-		double value;
-
-		//static_assert(sizeof(value) == 8, "Invalid size of double type");
-
-		_in.read((char*)&value, 8);
-
-		if (_in.fail())
-			throw Error("I/O Error while reading from file.");
-
-		return value;
-	}
-
-
-	// ******************************************************************************
-	bool ReadBool( void )
-	{
-		bool value;
-
-		_in.read((char*)&value, sizeof(bool));
-
-		if (_in.fail())
-			throw Error("I/O Error while reading from file.");
-
-		return value;
-	}
-
-
-	// ******************************************************************************
-	void Read( void* buffer, int size )
+	void Read( void* buffer, int size, bool bString = false )
 	{
 		if (size < 1)
 			return;
 
-		_in.read((char*)buffer, size);
+		qint64 nReaded = m_pDevice->read((char*)buffer, size);
 
-		if (_in.fail())
+		if (nReaded < 0)
 			throw Error("I/O Error while reading from file.");
+
+		if (fnHook)
+			fnHook(s_hookObj, buffer, size, bString);
 	}
 
 
@@ -172,27 +74,19 @@ public:
 
 
 	// ******************************************************************************
-	void ReadSQString( std::string& str )
+	void ReadSQString( QString& str )
 	{
+		static QByteArray buff;
 		int len = ReadInt32();
-		str.clear();
-		str.reserve(len);
+		buff.resize(len);
+		Read((void*)buff.data(), len, true);
 
-		while(len > 0)
-		{
-			char buffer[128];
-			int chunk = std::min(128, len);
-
-			Read(buffer, chunk);
-
-			str.append(buffer, chunk);
-			len -= chunk;
-		}
+		str = s_srcCodec->toUnicode(buff);
 	}
 
 
 	// ******************************************************************************
-	void ReadSQStringObject( std::string& str )
+	void ReadSQStringObject(QString& str)
 	{
 		static const int StringObjectType = 0x10 | 0x08000000;
 		static const int NullObjectType = 0x01 | 0x01000000;
@@ -206,4 +100,20 @@ public:
 		else
 			throw Error("Expected string object not found in source binary file.");
 	}
+
+	static void SetReaderHook(ReaderHooker fn, void* obj)
+	{
+		fnHook = fn;
+		s_hookObj = s_hookObj;
+	}
+	static void SetCodec(const char* pName)
+	{
+		s_srcCodec = QTextCodec::codecForName(pName);
+	}
 };
+
+__declspec(selectany) QTextCodec* BinaryReader::s_srcCodec = QTextCodec::codecForName("Shift-JIS");
+
+__declspec(selectany) void* BinaryReader::s_hookObj = nullptr;
+
+__declspec(selectany) ReaderHooker BinaryReader::fnHook = nullptr;

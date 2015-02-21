@@ -1,6 +1,10 @@
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nutcracker", "nutcracker\nutcracker.vcproj", "{3C09F45A-E177-459F-9CC0-84EF38474022}"
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nutcracker", "nutcracker\nutcracker.vcxproj", "{3C09F45A-E177-459F-9CC0-84EF38474022}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Qt5Core", "Qt\src\corelib\Qt5Core.vcxproj", "{8E27267A-38FD-3F4E-B34A-873680D72287}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,6 +16,10 @@ Global
 		{3C09F45A-E177-459F-9CC0-84EF38474022}.Debug|Win32.Build.0 = Debug|Win32
 		{3C09F45A-E177-459F-9CC0-84EF38474022}.Release|Win32.ActiveCfg = Release|Win32
 		{3C09F45A-E177-459F-9CC0-84EF38474022}.Release|Win32.Build.0 = Release|Win32
+		{8E27267A-38FD-3F4E-B34A-873680D72287}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8E27267A-38FD-3F4E-B34A-873680D72287}.Debug|Win32.Build.0 = Debug|Win32
+		{8E27267A-38FD-3F4E-B34A-873680D72287}.Release|Win32.ActiveCfg = Release|Win32
+		{8E27267A-38FD-3F4E-B34A-873680D72287}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

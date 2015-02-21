@@ -1,4 +1,4 @@
-
+﻿
 #include "Errors.h"
 #include <stdarg.h>
 

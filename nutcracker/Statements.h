@@ -1,4 +1,4 @@
-
+﻿
 #pragma once
 
 #include <memory>
@@ -42,7 +42,7 @@ class Statement : public enable_shared_from_this<Statement>
 {
 public:
 	virtual int GetType( void ) const = 0;
-	virtual void GenerateCode( std::ostream& out, int indent ) const = 0;
+	virtual void GenerateCode(QTextStream& out, int indent) const = 0;
 
 	virtual shared_ptr<Statement> Postprocess( void )
 	{
@@ -53,7 +53,7 @@ public:
 	bool IsExpression( void ) const		{ return GetType() == Stat_Expression;	}
 	bool IsBlock( void ) const			{ return GetType() == Stat_Block;		}
 
-	void GenerateCodeInBlock( std::ostream& out, int indent ) const
+	void GenerateCodeInBlock( QTextStream& out, int indent ) const
 	{
 		if (IsBlock())
 		{
@@ -61,9 +61,9 @@ public:
 		}
 		else
 		{
-			out << ::indent(indent) << '{' << std::endl;
+			out << ::indent(indent) << '{' << endl;
 			GenerateCode(out, indent + 1);
-			out << ::indent(indent) << '}' << std::endl;
+			out << ::indent(indent) << '}' << endl;
 		}
 	}
 };
@@ -80,7 +80,7 @@ public:
 		return Stat_Empty;
 	}
 
-	virtual void GenerateCode( std::ostream&, int ) const
+	virtual void GenerateCode( QTextStream&, int ) const
 	{
 	}
 
@@ -113,18 +113,18 @@ public:
 		return Stat_Expression;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
 		if (!m_Expression)
 			return;
 
 		if (m_Expression->GetType() == Exp_NewClassExpression || m_Expression->GetType() == Exp_Function)
 		{
-			out << ::indent(n) << expression_out(m_Expression, n) << std::endl << std::endl;
+			out << indent(n) << expression_out(m_Expression, n) << endl << endl;
 		}
 		else
 		{
-			out << ::indent(n) << expression_out(m_Expression, n) << ';' << std::endl;
+			out << indent(n) << expression_out(m_Expression, n) << ';' << endl;
 		}
 	}
 
@@ -186,7 +186,7 @@ public:
 		return Stat_Block;
 	}
 
-	void GenerateBlockContentCode( std::ostream& out, int n ) const
+	void GenerateBlockContentCode( QTextStream& out, int n ) const
 	{
 		StatementPtr prevStatement;
 		bool pendingSpace = false;
@@ -198,7 +198,7 @@ public:
 			if (statement->GetType() == Stat_Case)
 			{
 				if (prevStatement)
-					out << std::endl;
+					out << endl;
 
 				statement->GenerateCode(out, std::max(0, n - 1));
 				pendingSpace = false;
@@ -209,7 +209,7 @@ public:
 			bool separatedStatement = statement->GetType() > Stat_BEGIN_LINE_SEPARATED;
 
 			if (prevStatement && (separatedStatement || pendingSpace))
-				out << std::endl;
+				out << endl;
 
 			statement->GenerateCode(out, n);
 
@@ -219,11 +219,11 @@ public:
 		}
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
-		out << ::indent(n) << '{' << std::endl;
+		out << ::indent(n) << '{' << endl;
 		GenerateBlockContentCode(out, n + 1);
-		out << ::indent(n) << '}' << std::endl;
+		out << ::indent(n) << '}' << endl;
 	}
 
 	virtual StatementPtr Postprocess( void );
@@ -241,9 +241,9 @@ private:
 	bool m_Canceled;
 
 private:
-	void _generateCode( std::ostream& out, int n ) const
+	void _generateCode( QTextStream& out, int n ) const
 	{
-		out << "if (" << expression_out(m_Condition, n) << ')' << std::endl;
+		out << "if (" << expression_out(m_Condition, n) << ')' << endl;
 		m_WhenTrue->GenerateCodeInBlock(out, n);
 
 		if (m_WhenFalse)
@@ -255,7 +255,7 @@ private:
 			}
 			else
 			{
-				out << ::indent(n) << "else" << std::endl;
+				out << ::indent(n) << "else" << endl;
 				m_WhenFalse->GenerateCodeInBlock(out, n);
 			}
 		}
@@ -275,7 +275,7 @@ public:
 		return Stat_If;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
 		out << ::indent(n);
 		_generateCode(out, n);
@@ -309,13 +309,13 @@ public:
 class LocalVarInitStatement : public Statement
 {
 private:
-	std::string m_Name;
+	QString m_Name;
 	ExpressionPtr m_Initialization;
 	int m_StackAddress;
 	int m_StartAddress, m_EndAddress;
 
 public:
-	explicit LocalVarInitStatement( const std::string& name, int stackAddress, int startAddress, int endAddress, ExpressionPtr init = ExpressionPtr() )
+	explicit LocalVarInitStatement(const QString& name, int stackAddress, int startAddress, int endAddress, ExpressionPtr init = ExpressionPtr())
 	{
 		m_Name = name;
 		m_StackAddress = stackAddress;
@@ -329,17 +329,17 @@ public:
 		return Stat_LocalVar;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
 		out << ::indent(n) << "local " << m_Name;
 
 		if (!m_Initialization)
-			out << ';' << std::endl;
+			out << ';' << endl;
 		else
-			out << " = " << expression_out(m_Initialization, n) << ';' << std::endl;
+			out << " = " << expression_out(m_Initialization, n) << ';' << endl;
 	}
 
-	const std::string& GetVarName( void ) const
+	const QString& GetVarName(void) const
 	{
 		return m_Name;
 	}
@@ -370,12 +370,12 @@ public:
 		return Stat_Return;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
 		if (!m_Expression)
-			out << ::indent(n) << "return;" << std::endl;
+			out << ::indent(n) << "return;" << endl;
 		else
-			out << ::indent(n) << "return " << expression_out(m_Expression, n) << ';' << std::endl;
+			out << ::indent(n) << "return " << expression_out(m_Expression, n) << ';' << endl;
 	}
 };
 
@@ -396,9 +396,9 @@ public:
 		return Stat_Throw;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
-		out << ::indent(n) << "throw " << expression_out(m_Expression, n) << ';' << std::endl;
+		out << ::indent(n) << "throw " << expression_out(m_Expression, n) << ';' << endl;
 	}
 };
 
@@ -419,12 +419,12 @@ public:
 		return Stat_Yield;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
 		if (m_Expression)
-			out << ::indent(n) << "yield " << expression_out(m_Expression, n) << ';' << std::endl;
+			out << ::indent(n) << "yield " << expression_out(m_Expression, n) << ';' << endl;
 		else
-			out << ::indent(n) << "yield;" << std::endl;
+			out << ::indent(n) << "yield;" << endl;
 	}
 };
 
@@ -433,12 +433,12 @@ class TryCatchStatement : public Statement
 {
 private:
 	StatementPtr m_Try, m_Catch;
-	std::string m_CatchVariable;
+	QString m_CatchVariable;
 
 
 
 public:
-	explicit TryCatchStatement( StatementPtr tryStatement, StatementPtr catchStatement, const std::string& varName )
+	explicit TryCatchStatement(StatementPtr tryStatement, StatementPtr catchStatement, const QString& varName)
 	{
 		m_Try = tryStatement;
 		m_Catch = catchStatement;
@@ -450,11 +450,11 @@ public:
 		return Stat_TryCatch;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
-		out << ::indent(n) << "try" << std::endl;
+		out << ::indent(n) << "try" << endl;
 		m_Try->GenerateCodeInBlock(out, n);
-		out << ::indent(n) << "catch( " << m_CatchVariable << " )" << std::endl;
+		out << ::indent(n) << "catch( " << m_CatchVariable << " )" << endl;
 		m_Catch->GenerateCodeInBlock(out, n);
 	}
 
@@ -477,9 +477,9 @@ public:
 		return Stat_Break;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
-		out << ::indent(n) << "break;" << std::endl;
+		out << ::indent(n) << "break;" << endl;
 	}
 };
 
@@ -492,9 +492,9 @@ public:
 		return Stat_Continue;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
-		out << ::indent(n) << "continue;" << std::endl;
+		out << ::indent(n) << "continue;" << endl;
 	}
 };
 
@@ -502,10 +502,10 @@ public:
 class CommentStatement : public Statement
 {
 private:
-	std::string m_Text;
+	QString m_Text;
 
 public:
-	explicit CommentStatement( const std::string& text )
+	explicit CommentStatement(const QString& text)
 	{
 		m_Text = text;
 	}
@@ -515,9 +515,9 @@ public:
 		return Stat_Comment;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
-		out << ::indent(n) << "  // " << m_Text << std::endl;
+		out << ::indent(n) << "  // " << m_Text << endl;
 	}
 };
 
@@ -577,14 +577,13 @@ public:
 		return Stat_For;
 	}
 
-	void GenerateStatementInline( std::ostream& out, int n, StatementPtr statement ) const
+	void GenerateStatementInline( QTextStream& out, int n, StatementPtr statement ) const
 	{
-		std::ostringstream statementBuffer;
-		statement->GenerateCode(statementBuffer, 0);
+		QString text;
+		QTextStream buff(&text);
+		statement->GenerateCode(buff, 0);
 
-		std::string text = statementBuffer.str();
-
-		while (!text.empty() && (text[text.length()-1] == '\n' || text[text.length()-1] == ';'))
+		while (!text.isEmpty() && (text[text.length()-1] == '\n' || text[text.length()-1] == ';'))
 			text.resize(text.length()-1); //remove last element
 
 		AssureIndents(text, n);
@@ -593,7 +592,7 @@ public:
 	}
 
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
 		out << ::indent(n) << "for( ";
 		
@@ -610,7 +609,7 @@ public:
 		if (m_Incrementation)
 			GenerateStatementInline(out, n, m_Incrementation);
 		
-		out << " )" << std::endl;
+		out << " )" << endl;
 		m_Block->GenerateCodeInBlock(out, n);
 	}
 
@@ -641,9 +640,9 @@ public:
 		return Stat_While;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
-		out << ::indent(n) << "while (" << expression_out(m_Condition, n) << ')' << std::endl;
+		out << ::indent(n) << "while (" << expression_out(m_Condition, n) << ')' << endl;
 		m_Block->GenerateCodeInBlock(out, n);
 	}
 
@@ -725,11 +724,11 @@ public:
 		return Stat_DoWhile;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
-		out << ::indent(n) << "do" << std::endl;
+		out << ::indent(n) << "do" << endl;
 		m_Block->GenerateCodeInBlock(out, n);
-		out << ::indent(n) << "while (" << expression_out(m_Condition, n) << ");" << std::endl;
+		out << ::indent(n) << "while (" << expression_out(m_Condition, n) << ");" << endl;
 	}
 
 	virtual StatementPtr Postprocess( void )
@@ -762,14 +761,14 @@ public:
 		return Stat_Foreach;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
 		out << ::indent(n) << "foreach( ";
 		
 		if (m_Key && (!m_Key->IsVariable() || static_pointer_cast<VariableExpression>(m_Key)->GetVariableName() != "@INDEX@"))
 			out << expression_out(m_Key, n) << ", ";
 
-		out << expression_out(m_Value, n) << " in " << expression_out(m_Object, n) << " )" << std::endl;
+		out << expression_out(m_Value, n) << " in " << expression_out(m_Object, n) << " )" << endl;
 
 		m_Block->GenerateCodeInBlock(out, n);
 	}
@@ -801,9 +800,9 @@ public:
 		return Stat_Switch;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
-		out << ::indent(n) << "switch(" << expression_out(m_Variable, n) << ')' << std::endl;
+		out << ::indent(n) << "switch(" << expression_out(m_Variable, n) << ')' << endl;
 		m_Block->GenerateCodeInBlock(out, n);
 	}
 
@@ -832,12 +831,12 @@ public:
 		return Stat_Case;
 	}
 
-	virtual void GenerateCode( std::ostream& out, int n ) const
+	virtual void GenerateCode( QTextStream& out, int n ) const
 	{
 		if (m_Value)
-			out << ::indent(n) << "case " << expression_out(m_Value, n) << ':' << std::endl;
+			out << ::indent(n) << "case " << expression_out(m_Value, n) << ':' << endl;
 		else
-			out << ::indent(n) << "default:" << std::endl;
+			out << ::indent(n) << "default:" << endl;
 	}
 };
 

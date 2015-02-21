@@ -1,10 +1,9 @@
-
+﻿
 #pragma once
 
-#include <istream>
 #include <vector>
 #include <memory>
-
+#include <QTextStream>
 #include "BinaryReader.h"
 #include "SqObject.h"
 
@@ -36,12 +35,13 @@ private:
 
 	struct LocalVarInfo
 	{
-		std::string name;
+		QString name;
 		int start_op;
 		int end_op;
 		int pos;
 		bool foreachLoopState;
 	};
+	typedef std::vector<LocalVarInfo> LocalVarInfos;
 
 	struct LineInfo
 	{
@@ -50,17 +50,17 @@ private:
 	};
 
 	int m_FunctionIndex;
-	std::string m_SourceName;
-	std::string m_Name;
+	QString m_SourceName;
+	QString m_Name;
 
 	int m_StackSize;
 	bool m_IsGenerator;
-	bool m_GotVarParams;
+	int m_VarParams;
 
 	std::vector<SqObject> m_Literals;
-	std::vector<std::string> m_Parameters;
+	std::vector<QString> m_Parameters;
 	std::vector<OuterValueInfo> m_OuterValues;
-	std::vector<LocalVarInfo> m_Locals;
+	LocalVarInfos m_Locals;
 	std::vector<LineInfo> m_LineInfos;
 	std::vector<int> m_DefaultParams;
 	std::vector<Instruction> m_Instructions;
@@ -73,7 +73,7 @@ private:
 	void DecompileJumpInstruction( VMState& state, int arg1 ) const;
 	void DecompileDoWhileLoop( VMState& state, int jumpAddress ) const;
 	void DecompileSwitchBlock( VMState& state ) const;
-	void PrintOpcode( std::ostream& out, int pos, const Instruction& op ) const;
+	void PrintOpcode( QTextStream& out, int pos, const Instruction& op ) const;
 
 public:
 	NutFunction()
@@ -88,18 +88,18 @@ public:
 
 	void Load( BinaryReader& reader );
 
-	void GenerateFunctionSource( int n, std::ostream& out, const std::string& name, const std::vector< std::string >& defaults ) const;
-	void GenerateBodySource( int n, std::ostream& out ) const;
+	void GenerateFunctionSource( int n, QTextStream& out, const QString& name, const std::vector< QString >& defaults ) const;
+	void GenerateBodySource( int n, QTextStream& out ) const;
 
-	void GenerateFunctionSource( int n, std::ostream& out ) const
-	{	//disasemble a function on the fly
-		std::vector< std::string > dummy;
+	void GenerateFunctionSource( int n, QTextStream& out ) const
+{	//disasemble a function on the fly
+		std::vector< QString > dummy;
 		GenerateFunctionSource(n, out, m_Name, dummy);
 	}
 
-	bool DoCompare( const NutFunction& other, const std::string parentName, std::ostream& out ) const;
+	bool DoCompare( const NutFunction& other, const QString& parentName, QTextStream& out ) const;
 
-	const NutFunction* FindFunction( const std::string& name ) const;
+	const NutFunction* FindFunction( const QString& name ) const;
 	const NutFunction& GetFunction( int i ) const;
 };
 
@@ -111,8 +111,9 @@ class NutScript
 	
 
 public:
-	void LoadFromFile( const char* fileName );
-	void LoadFromStream( std::istream& in );
+	void LoadFromFile( const QString& );
+	void LoadFromStream( QIODevice* in );
+	void SetReaderHook(void* object, ReaderHooker hookFn);
 
 	const NutFunction& GetMain( void ) const	{ return m_main;	}
 };
