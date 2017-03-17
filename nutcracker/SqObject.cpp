@@ -1,6 +1,5 @@
-﻿
+﻿#include "stdafx.h"
 #include "SqObject.h"
-#include <QTextStream>
 using namespace std;
 
 
@@ -29,27 +28,27 @@ void PrintEscapedString(QTextStream& out, const QString& str)
 // ***********************************************************************************************************************
 void SqObject::Load( BinaryReader& reader )
 {
-	int type = reader.ReadInt32();
+	SQObjectType type = (SQObjectType)reader.ReadInt32();
 	switch(type)
 	{
 		default:
 			throw Error("Unknown type of object in source binary file: 0x%08X", type);
 
-		case TypeNull:
+		case OT_NULL:
 			m_string.clear();
 			m_integer = 0;
 			break;
 
-		case TypeString:
+		case OT_STRING:
 			reader.ReadSQString(m_string);
 			break;
 
-		case TypeInteger:
-		case TypeBool:
+		case OT_INTEGER:
+		case OT_BOOL:
 			m_integer = reader.ReadUInt32();
 			break;
 
-		case TypeFloat:
+		case OT_FLOAT:
 			m_float = reader.ReadFloat32();
 			break;
 	}
@@ -71,11 +70,11 @@ const char* SqObject::GetTypeName( void ) const
 	switch(m_type)
 	{
 		case 0:				return "Empty";
-		case TypeNull:		return "NULL";
-		case TypeString:	return "String";
-		case TypeInteger:	return "Integer";
-		case TypeBool:		return "Bool";
-		case TypeFloat:		return "Float";
+		case OT_NULL:		return "NULL";
+		case OT_STRING:	return "String";
+		case OT_INTEGER:	return "Integer";
+		case OT_BOOL:		return "Bool";
+		case OT_FLOAT:		return "Float";
 		default:			return "Unknown";
 	}
 }
@@ -84,7 +83,7 @@ const char* SqObject::GetTypeName( void ) const
 // ***********************************************************************************************************************
 const  QString& SqObject::GetString(void) const
 {
-	if (m_type != TypeString && m_type != TypeNull)
+	if (m_type != OT_STRING && m_type != OT_NULL)
 		throw Error("Request of String in object of type %s.", GetTypeName());
 
 	return m_string;
@@ -94,7 +93,7 @@ const  QString& SqObject::GetString(void) const
 // ***********************************************************************************************************************
 unsigned int SqObject::GetInteger( void ) const
 {
-	if (m_type != TypeInteger && m_type != TypeNull && m_type != TypeBool)
+	if (m_type != OT_INTEGER && m_type != OT_NULL && m_type != OT_BOOL)
 		throw Error("Request of Integer in object of type %s.", GetTypeName());
 
 	return m_integer;
@@ -104,7 +103,7 @@ unsigned int SqObject::GetInteger( void ) const
 // ***********************************************************************************************************************
 float SqObject::GetFloat( void ) const
 {
-	if (m_type != TypeFloat && m_type != TypeNull)
+	if (m_type != OT_FLOAT && m_type != OT_NULL)
 		throw Error("Request of Float in object of type %s.", GetTypeName());
 
 	return m_float;
@@ -119,16 +118,16 @@ bool SqObject::operator == ( const SqObject& other ) const
 	switch(m_type)
 	{
 	case 0:
-	case SqObject::TypeNull:
+	case SqObject::OT_NULL:
 		return true;
 
-	case SqObject::TypeString:
+	case SqObject::OT_STRING:
 		return m_string == other.m_string;
 		
-	case SqObject::TypeInteger:
+	case SqObject::OT_INTEGER:
 		return m_integer == other.m_integer;
 
-	case SqObject::TypeFloat:
+	case SqObject::OT_FLOAT:
 		return std::abs(m_float - other.m_float) < 0.00001f;
 	}
 
@@ -148,21 +147,21 @@ QTextStream& operator<<(QTextStream& os, const SqObject& obj)
 		os << "<Empty>";
 		break;
 
-	case SqObject::TypeNull:
+	case SqObject::OT_NULL:
 		os << "NULL";
 		break;
 
-	case SqObject::TypeString:
+	case SqObject::OT_STRING:
 		os << '\"';
 		PrintEscapedString(os, obj.m_string);
 		os << '\"';
 		break;
 
-	case SqObject::TypeInteger:
+	case SqObject::OT_INTEGER:
 		os << obj.m_integer;
 		break;
 
-	case SqObject::TypeFloat:
+	case SqObject::OT_FLOAT:
 		os << std::showpoint << obj.m_float;
 		break;
 

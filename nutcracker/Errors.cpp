@@ -1,4 +1,4 @@
-﻿
+﻿#include "stdafx.h"
 #include "Errors.h"
 #include <stdarg.h>
 

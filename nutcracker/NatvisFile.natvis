@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+	<Type Name="SqObject">
+		<DisplayString Condition="m_type == OT_STRING">{m_string}</DisplayString>
+		<DisplayString>{m_type}</DisplayString>
+	</Type>
+
+	<Type Name="NutFunction::Instruction">
+		<DisplayString>{op}</DisplayString>
+	</Type>
+	
+</AutoVisualizer>

@@ -1,4 +1,4 @@
-﻿
+﻿#include "stdafx.h"
 // #include <iostream>
 // #include <sstream>
 // #include <iomanip>
@@ -11,91 +11,6 @@
 #include "Expressions.h"
 #include "Statements.h"
 #include "BlockState.h"
-
-
-enum Opcode
-{
-	OP_LINE = 0x00,
-	OP_LOAD = 0x01,
-	OP_LOADINT = 0x02,
-	OP_LOADFLOAT = 0x03,
-	OP_DLOAD = 0x04,
-	OP_TAILCALL = 0x05,
-	OP_CALL = 0x06,
-	OP_PREPCALL = 0x07,
-	OP_PREPCALLK = 0x08,
-	OP_GETK = 0x09,
-	OP_MOVE = 0x0A,
-	OP_NEWSLOT = 0x0B,
-	OP_DELETE = 0x0C,
-	OP_SET = 0x0D,
-	OP_GET = 0x0E,
-	OP_EQ = 0x0F,
-	OP_NE = 0x10,
-	OP_ADD = 0x11,
-	OP_SUB = 0x12,
-	OP_MUL = 0x13,
-	OP_DIV = 0x14,
-	OP_MOD = 0x15,
-	OP_BITW = 0x16,
-	OP_RETURN = 0x17,
-	OP_LOADNULLS = 0x18,
-	OP_LOADROOT = 0x19,
-	OP_LOADBOOL = 0x1A,
-	OP_DMOVE = 0x1B,
-	OP_JMP = 0x1C,
-	//OP_JNZ=				0x1D,
-	OP_JCMP = 0x1D,
-	OP_JZ = 0x1E,
-	OP_SETOUTER = 0x1F,
-	OP_GETOUTER = 0x20,
-	OP_NEWOBJ = 0x21,
-	OP_APPENDARRAY = 0x22,
-	OP_COMPARITH = 0x23,
-	OP_INC = 0x24,
-	OP_INCL = 0x25,
-	OP_PINC = 0x26,
-	OP_PINCL = 0x27,
-	OP_CMP = 0x28,
-	OP_EXISTS = 0x29,
-	OP_INSTANCEOF = 0x2A,
-	OP_AND = 0x2B,
-	OP_OR = 0x2C,
-	OP_NEG = 0x2D,
-	OP_NOT = 0x2E,
-	OP_BWNOT = 0x2F,
-	OP_CLOSURE = 0x30,
-	OP_YIELD = 0x31,
-	OP_RESUME = 0x32,
-	OP_FOREACH = 0x33,
-	OP_POSTFOREACH = 0x34,
-	OP_CLONE = 0x35,
-	OP_TYPEOF = 0x36,
-	OP_PUSHTRAP = 0x37,
-	OP_POPTRAP = 0x38,
-	OP_THROW = 0x39,
-	OP_NEWSLOTA = 0x3A,
-	OP_GETBASE = 0x3B,
-	OP_CLOSE = 0x3C,
-};
-
-enum BitWiseOpcode 
-{
-	BW_AND = 0,
-	BW_OR = 2,	
-	BW_XOR = 3,
-	BW_SHIFTL = 4,
-	BW_SHIFTR = 5,
-	BW_USHIFTR = 6
-};
-
-enum ComparisionOpcode 
-{
-	CMP_G = 0,
-	CMP_GE = 2,	
-	CMP_L = 3,
-	CMP_LE = 4
-};
 
 const char* OpcodeNames[] = 
 {
@@ -740,14 +655,6 @@ void NutFunction::DecompileStatement( VMState& state ) const
 // 		case OP_GETVARGV:
 // 			state.SetVar(arg0, ExpressionPtr(new ArrayIndexingExpression(ExpressionPtr(new LiteralConstantExpression( "vargv" )),state.GetVar(arg1))));
 // 			break;
-// 
-// 		case OP_NEWTABLE:
-// 			state.SetVar(arg0, ExpressionPtr(new NewTableExpression));
-// 			break;
-// 
-// 		case OP_NEWARRAY:
-// 			state.SetVar(arg0, ExpressionPtr(new NewArrayExpression));
-// 			break;
 
 		case OP_APPENDARRAY:
 			{
@@ -1050,22 +957,34 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			state.PushStatement(StatementPtr(new ThrowStatement(state.GetVar(arg0))));
 			break;
 
+		case OP_NEWOBJ:
+			enum NewObjType{ NOT_TABLE, NOT_ARRAY, NOT_CLASS };
+			switch (arg3)
+			{
+			case NOT_TABLE:
+				state.SetVar(arg0, ExpressionPtr(new NewTableExpression));
+				break;				
+			case NOT_ARRAY:
+				state.SetVar(arg0, ExpressionPtr(new NewArrayExpression));
+				break;
+			case NOT_CLASS:
+			{
+				ExpressionPtr attributes;
+				ExpressionPtr baseClass;
 
-// 		case OP_CLASS:
-// 			{
-// 				ExpressionPtr attributes;
-// 				ExpressionPtr baseClass;
-// 
-// 				if (arg1 != -1)
-// 					baseClass = state.GetVar(arg1);
-// 
-// 				if (arg2 != 0xff)
-// 					attributes = state.GetVar(arg2);
-// 
-// 				state.SetVar(arg0, ExpressionPtr(new NewClassExpression(baseClass, attributes)));
-// 			}
-// 			break;
+				if (arg1 != -1)
+					baseClass = state.GetVar(arg1);
 
+				if (arg2 != 0xff)
+					attributes = state.GetVar(arg2);
+
+				state.SetVar(arg0, ExpressionPtr(new NewClassExpression(baseClass, attributes)));
+			}
+			default:
+				assert(0);
+				break;
+			}
+			break;
 		case OP_NEWSLOTA:
 		case OP_NEWSLOT:
 			{

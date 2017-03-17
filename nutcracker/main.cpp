@@ -1,4 +1,5 @@
-﻿#include "NutScript.h"
+﻿#include "stdafx.h"
+#include "NutScript.h"
 #include <iostream>
 #include <fstream>
 

@@ -1,12 +1,10 @@
-﻿
+﻿#include "stdafx.h"
 // #include <iostream>
 // #include <sstream>
 // #include <fstream>
- #include <QFile>
 
 #include "Errors.h"
 #include "NutScript.h"
-#include "BinaryReader.h"
 
 bool g_DebugMode = false;
 

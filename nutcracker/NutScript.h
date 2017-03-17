@@ -21,7 +21,7 @@ public:
 			float arg1_float;
 		};
 
-		char op;
+		Opcode op;
 		char arg0, arg2, arg3;
 	};
 
@@ -113,7 +113,6 @@ class NutScript
 public:
 	void LoadFromFile( const QString& );
 	void LoadFromStream( QIODevice* in );
-	void SetReaderHook(void* object, ReaderHooker hookFn);
 
 	const NutFunction& GetMain( void ) const	{ return m_main;	}
 };

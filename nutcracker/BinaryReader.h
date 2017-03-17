@@ -110,6 +110,10 @@ public:
 	{
 		s_srcCodec = QTextCodec::codecForName(pName);
 	}
+	static void SetCodec(QTextCodec* pSrcCodec)
+	{
+		s_srcCodec = pSrcCodec;
+	}
 };
 
 __declspec(selectany) QTextCodec* BinaryReader::s_srcCodec = QTextCodec::codecForName("Shift-JIS");

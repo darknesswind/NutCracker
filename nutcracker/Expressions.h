@@ -149,21 +149,21 @@ public:
 		switch(obj.GetType())
 		{
 			default:
-			case SqObject::TypeNull:
+			case SqObject::OT_NULL:
 				m_isLiteral = true;
 				m_text.clear();
 				break;
 
-			case SqObject::TypeString:
+			case SqObject::OT_STRING:
 				set(obj.GetString());
 				break;
 
-			case SqObject::TypeBool:
-			case SqObject::TypeInteger:
+			case SqObject::OT_BOOL:
+			case SqObject::OT_INTEGER:
 				set(obj.GetInteger());
 				break;
 
-			case SqObject::TypeFloat:
+			case SqObject::OT_FLOAT:
 				set(obj.GetFloat());
 				break;
 		}
