@@ -1,11 +1,4 @@
-﻿
-#pragma once
-
-#include <iostream>
-#include <sstream>
-#include <memory>
-#include <string>
-
+﻿#pragma once
 #include "SqObject.h"
 #include "Formatters.h"
 
@@ -35,8 +28,8 @@ class Expression
 {
 public:
 	virtual int GetType( void ) const = 0;
-	//virtual QString ToString( void ) const = 0;
-	virtual void GenerateCode( QTextStream& out, int indent ) const = 0;
+	//virtual LString ToString( void ) const = 0;
+	virtual void GenerateCode( std::wostream& out, int indent ) const = 0;
 
 	bool IsOperator( void ) const		{ return GetType() == Exp_Operator;										}
 	bool IsVariable( void ) const		{ return GetType() == Exp_Variable || GetType() == Exp_LocalVariable;	}
@@ -51,7 +44,7 @@ struct expression_out
 
 	explicit expression_out( ExpressionPtr expr, int n ) : m_expr(expr), m_indent(n) {}
 
-	friend QTextStream& operator<< ( QTextStream& out, const expression_out& e )
+	friend std::wostream& operator<< ( std::wostream& out, const expression_out& e )
 	{
 		e.m_expr->GenerateCode(out, e.m_indent);
 		return out;
@@ -64,10 +57,10 @@ struct expression_out
 class VariableExpression : public Expression
 {
 private:
-	QString m_name;
+	LString m_name;
 
 public:
-	explicit VariableExpression( const QString& name )
+	explicit VariableExpression( const LString& name )
 	: m_name(name)
 	{
 	}
@@ -77,12 +70,12 @@ public:
 		return Exp_Variable;
 	}
 
-	virtual void GenerateCode( QTextStream& out, int ) const
+	virtual void GenerateCode( std::wostream& out, int ) const
 	{
 		out << m_name;
 	}
 
-	const QString& GetVariableName( void ) const
+	const LString& GetVariableName( void ) const
 	{
 		return m_name;
 	}
@@ -93,7 +86,7 @@ public:
 class LocalVariableExpression : public VariableExpression
 {
 public:
-	explicit LocalVariableExpression( const QString& name )
+	explicit LocalVariableExpression( const LString& name )
 	: VariableExpression(name)
 	{
 	}
@@ -109,7 +102,7 @@ public:
 class ConstantExpression : public Expression
 {
 protected:
-	QString m_text;
+	LString m_text;
 	bool m_isLiteral;
 
 	char ToHex( int value )
@@ -129,7 +122,7 @@ protected:
 
 
 public:
-	explicit ConstantExpression( const QString& str )
+	explicit ConstantExpression( const LString& str )
 	{
 		set(str);
 	}
@@ -149,53 +142,53 @@ public:
 		switch(obj.GetType())
 		{
 			default:
-			case SqObject::OT_NULL:
+			case OT_NULL:
 				m_isLiteral = true;
 				m_text.clear();
 				break;
 
-			case SqObject::OT_STRING:
+			case OT_STRING:
 				set(obj.GetString());
 				break;
 
-			case SqObject::OT_BOOL:
-			case SqObject::OT_INTEGER:
+			case OT_BOOL:
+			case OT_INTEGER:
 				set(obj.GetInteger());
 				break;
 
-			case SqObject::OT_FLOAT:
+			case OT_FLOAT:
 				set(obj.GetFloat());
 				break;
 		}
 	}
 
 
-	void set( const QString& str )
+	void set( const LString& str )
 	{
 		m_text.clear();
 		m_text.reserve(str.size() + 2);
 
 		m_text += '\"';
-		for( auto i = str.begin(); i != str.end(); ++i)
+		for( auto iter = str.begin(); iter != str.end(); ++iter)
 		{
-			switch(i->unicode())
+			switch(*iter)
 			{
-				case '\"':	m_text += "\\\"";			break;
-				case '\'':	m_text += "\\\'";			break;
-				case '\r':	m_text += "\\r";			break;
-				case '\n':	m_text += "\\n";			break;
-				case '\t':	m_text += "\\t";			break;
-				case '\v':	m_text += "\\v";			break;
-				case '\a':	m_text += "\\a";			break;
-				case '\\':	m_text += "\\\\";			break;
+				case '\"':	m_text += L"\\\"";			break;
+				case '\'':	m_text += L"\\\'";			break;
+				case '\r':	m_text += L"\\r";			break;
+				case '\n':	m_text += L"\\n";			break;
+				case '\t':	m_text += L"\\t";			break;
+				case '\v':	m_text += L"\\v";			break;
+				case '\a':	m_text += L"\\a";			break;
+				case '\\':	m_text += L"\\\\";			break;
 			
 				default:
 					{
-						QChar c = *i;
+						auto c = *iter;
 
-						if (!c.isPrint())
+						if (!iswprint(c))
 						{
-							m_text += QString("\\x%1").arg(c.unicode(), 4, 16, QChar('0'));
+							m_text += LStrBuilder("\\x%1").arg((int)c, 4, 16, L'0');
 						}
 						else
 						{
@@ -221,9 +214,9 @@ public:
 	void set( float value )
 	{
 		m_isLiteral = false;
-		m_text.setNum(value, 'g', 8);
+		m_text.setNum(value, 8);
 		if (m_text.indexOf('.') < 0)
-			m_text.append(".0");
+			m_text.append(L".0");
 	}
 
 
@@ -233,7 +226,7 @@ public:
 	}
 
 
-	virtual void GenerateCode( QTextStream& out, int ) const
+	virtual void GenerateCode( std::wostream& out, int ) const
 	{
 		out << m_text;
 	}
@@ -252,7 +245,7 @@ public:
 
 		for(int i = 1; i < (int)(m_text.size() - 1); ++i)
 		{
-			QChar c = m_text[i];
+			auto c = m_text[i];
 
 			bool isValidChar = 
 				(i > 1 && c >= '0' && c <= '9') ||
@@ -268,7 +261,7 @@ public:
 	}
 
 
-	QString GetLabel( void ) const
+	LString GetLabel( void ) const
 	{
 		if (!m_isLiteral || m_text.size() < 3)
 			return m_text;
@@ -317,7 +310,7 @@ public:
 	}
 
 
-	virtual void GenerateCode( QTextStream& out, int ) const
+	virtual void GenerateCode( std::wostream& out, int ) const
 	{
 		out << "getroottable()";
 	}
@@ -339,7 +332,7 @@ public:
 	}
 
 
-	virtual void GenerateCode( QTextStream& out, int ) const
+	virtual void GenerateCode( std::wostream& out, int ) const
 	{
 		out << "null";
 	}
@@ -370,7 +363,7 @@ protected:
 
 
 protected:
-	void GenerateOpName( QTextStream& out ) const
+	void GenerateOpName( std::wostream& out ) const
 	{
 		int op = m_operator;
 		if (!op) return;
@@ -416,7 +409,7 @@ protected:
 	}
 
 
-	void GenerateArgument( QTextStream& out, int n, ExpressionPtr arg, bool parenthesis ) const
+	void GenerateArgument( std::wostream& out, int n, ExpressionPtr arg, bool parenthesis ) const
 	{
 		if (parenthesis)
 		{
@@ -461,7 +454,7 @@ public:
 	}
 
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{
 		GenerateOpName(out);
 
@@ -494,9 +487,9 @@ public:
 	}
 
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{
-		QString text;
+		LString text;
 		
 		bool parenthesis = m_arg->IsOperator() && (static_pointer_cast<OperatorExpression>(m_arg)->GetOperatorPriority() < this->GetOperatorPriority());
 		GenerateArgument(out, n, m_arg, parenthesis);
@@ -534,7 +527,7 @@ public:
 	ExpressionPtr GetArg2( void )		{ return m_arg2;	}
 
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{	
 		int myPriority = GetOperatorPriority();
 		bool rightToLeft = 0 != (myPriority & 1);
@@ -656,7 +649,7 @@ public:
 	}
 
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{
 		int myPriority = GetOperatorPriority();
 		bool condParethesis = (m_condition->IsOperator() && (static_pointer_cast<OperatorExpression>(m_condition)->GetOperatorPriority() <= myPriority));
@@ -695,7 +688,7 @@ public:
 		m_arg2 = arg2;
 	}
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{
 		out << "delegate ";
 		
@@ -746,7 +739,7 @@ public:
 		}
 		else if (m_obj->IsVariable())
 		{
-			return static_pointer_cast<VariableExpression>(m_obj)->GetVariableName() == "this";	// TODO: Check for local variable deref
+			return static_pointer_cast<VariableExpression>(m_obj)->GetVariableName() == L"this";	// TODO: Check for local variable deref
 			//return true;
 		}
 		else
@@ -755,7 +748,7 @@ public:
 		}
 	}
 
-	void GenerateCode( QTextStream& out, int n, const char* labelsDelimiter, bool allowExplicitThis ) const
+	void GenerateCode( std::wostream& out, int n, const char* labelsDelimiter, bool allowExplicitThis ) const
 	{
 		bool parenthesis = 
 			m_obj->IsOperator() &&
@@ -777,7 +770,7 @@ public:
 			else if (m_obj->IsVariable())
 			{
 				// TODO: Removal of this when there is no local variable of this same name
-				if (static_pointer_cast<VariableExpression>(m_obj)->GetVariableName() != "this" || allowExplicitThis)
+				if (static_pointer_cast<VariableExpression>(m_obj)->GetVariableName() != L"this" || allowExplicitThis)
 				{
 					m_obj->GenerateCode(out, n);
 					out << labelsDelimiter;
@@ -799,23 +792,21 @@ public:
 		out << ']';
 	}
 
-	QString ToString( void ) const
+	LString ToString( void ) const
 	{
-		QString result;
-		QTextStream buffer(&result);
+		std::wstringstream buffer;
 		GenerateCode(buffer, 0);
-		return result;
+		return buffer.str();
 	}
 
-	QString ToFunctionNameString( void ) const
+	LString ToFunctionNameString( void ) const
 	{
-		QString result;
-		QTextStream buffer(&result);
+		std::wstringstream buffer;
 		GenerateCode(buffer, 0, "::", false);
-		return result;
+		return buffer.str();
 	}
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{
 		GenerateCode(out, n, ".", true);
 	}
@@ -854,7 +845,7 @@ public:
 	}
 
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{
 		m_function->GenerateCode(out, n);
 		out << '(';
@@ -876,7 +867,7 @@ public:
 class FunctionExpression : public Expression
 {
 protected:
-	QString m_name;
+	LString m_name;
 	int m_FunctionIndex;
 
 public:
@@ -885,7 +876,7 @@ public:
 	{
 	}
 
-	void SetName( const QString& name )
+	void SetName( const LString& name )
 	{
 		m_name = name;
 	}
@@ -901,7 +892,7 @@ public:
 class TableBaseExpression : public Expression
 {
 protected:
-	void GenerateElementCode( ExpressionPtr key, ExpressionPtr value, char eolChar, QTextStream& out, int n ) const;
+	void GenerateElementCode( ExpressionPtr key, ExpressionPtr value, char eolChar, std::wostream& out, int n ) const;
 };
 
 
@@ -924,7 +915,7 @@ public:
 	}
 
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{
 		if (m_Elements.empty())
 		{
@@ -932,19 +923,19 @@ public:
 			return;
 		}
 
-		out << "{" << endl;
+		out << "{" << std::endl;
 		for( vector< std::pair<ExpressionPtr, ExpressionPtr> >::const_iterator i = m_Elements.begin(); i != m_Elements.end(); ++i)
 		{
 			out << indent(n + 1);
 			GenerateElementCode(i->first, i->second, (*i != m_Elements.back()) ? ',' : 0, out, n + 1);
-			out << endl;
+			out << std::endl;
 		}
 
 		out << indent(n) << '}';
 	}
 
 
-	virtual void GenerateAttributesCode( QTextStream& out, int n ) const
+	virtual void GenerateAttributesCode( std::wostream& out, int n ) const
 	{
 		out << "</ ";
 		for( vector< std::pair<ExpressionPtr, ExpressionPtr> >::const_iterator i = m_Elements.begin(); i != m_Elements.end(); ++i)
@@ -980,7 +971,7 @@ public:
 	}
 
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{
 		if (m_Elements.empty())
 		{
@@ -988,7 +979,7 @@ public:
 			return;
 		}
 
-		out << "[" << endl;
+		out << "[" << std::endl;
 		for( vector< ExpressionPtr >::const_iterator i = m_Elements.begin(); i != m_Elements.end(); ++i)
 		{
 			out << indent(n + 1);
@@ -997,7 +988,7 @@ public:
 			if (*i != m_Elements.back())
 				out << ',';
 			
-			out << endl;
+			out << std::endl;
 		}
 
 		out << indent(n) << ']';
@@ -1023,7 +1014,7 @@ private:
 		bool isStatic;
 	};
 
-	QString m_Name;
+	LString m_Name;
 	ExpressionPtr m_BaseClass;
 	ExpressionPtr m_Attributes;
 
@@ -1036,7 +1027,7 @@ public:
 		m_Attributes = Attributes;
 	}
 
-	void SetName( const QString& name )
+	void SetName( const LString& name )
 	{
 		m_Name = name;
 	}
@@ -1046,11 +1037,11 @@ public:
 		return Exp_NewClassExpression;
 	}
 
-	void GenerateCode( QTextStream& out, int n ) const
+	void GenerateCode( std::wostream& out, int n ) const
 	{
 		out << "class ";
 
-		if (!m_Name.isEmpty())
+		if (!m_Name.empty())
 			out << m_Name  << ' ';
 		
 		if (m_BaseClass)
@@ -1065,15 +1056,15 @@ public:
 			static_pointer_cast<NewTableExpression>(m_Attributes)->GenerateAttributesCode(out, n);
 		}
 
-		out << endl;
-		out << indent(n) << '{' << endl;
+		out << std::endl;
+		out << indent(n) << '{' << std::endl;
 		for( vector< ClassElement >::const_iterator i = m_Elements.begin(); i != m_Elements.end(); ++i)
 		{
 			if (i->attributes && i->attributes->GetType() == Exp_NewTableExpression)
 			{
 				out << indent(n + 1);
 				static_pointer_cast<NewTableExpression>(i->attributes)->GenerateAttributesCode(out, n);
-				out << endl;
+				out << std::endl;
 			}
 
 			out << indent(n +	1);
@@ -1082,7 +1073,7 @@ public:
 				out << "static ";
 
 			GenerateElementCode(i->key, i->value, ';', out, n + 1);
-			out << endl;			
+			out << std::endl;			
 		}
 
 		out << indent(n) << '}';
@@ -1102,12 +1093,12 @@ public:
 
 
 // ******************************************************************************************************************************************************************************
-inline void TableBaseExpression::GenerateElementCode( ExpressionPtr key, ExpressionPtr value, char eolChar, QTextStream& out, int n ) const
+inline void TableBaseExpression::GenerateElementCode( ExpressionPtr key, ExpressionPtr value, char eolChar, std::wostream& out, int n ) const
 {
 	if (value->GetType() == Exp_Function || value->GetType() == Exp_NewClassExpression)
 	{
 		// Member function or nested class - find its name
-		QString name;
+		LString name;
 			
 		shared_ptr<ConstantExpression> labelExp = ConstantExpression::AsLabelExpression(key);
 		if (labelExp)
@@ -1126,7 +1117,7 @@ inline void TableBaseExpression::GenerateElementCode( ExpressionPtr key, Express
 			}
 		}
 
-		if (!name.isEmpty())
+		if (!name.empty())
 		{
 			if (value->GetType() == Exp_Function)
 			{
@@ -1140,7 +1131,7 @@ inline void TableBaseExpression::GenerateElementCode( ExpressionPtr key, Express
 			}
 
 			value->GenerateCode(out, n);
-			out << endl;
+			out << std::endl;
 			return;
 		}
 	}

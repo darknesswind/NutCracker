@@ -1,9 +1,4 @@
-﻿
-#pragma once
-
-#include <exception>
-#include <QString>
-
+﻿#pragma once
 
 // ************************************************************************************************************************************
 class Error : public std::exception

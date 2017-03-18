@@ -4,11 +4,11 @@ using namespace std;
 
 
 // ***********************************************************************************************************************
-void PrintEscapedString(QTextStream& out, const QString& str)
+void PrintEscapedString(wostream& out, const LString& str)
 {
-	for( auto i = str.begin(); i != str.end(); ++i )
+	for( auto iter = str.begin(); iter != str.end(); ++iter )
 	{
-		switch(i->unicode())
+		switch(*iter)
 		{
 			case '\r':	out << "\\r";			break;
 			case '\n':	out << "\\n";			break;
@@ -19,7 +19,7 @@ void PrintEscapedString(QTextStream& out, const QString& str)
 			case '\\':	out << "\\\\";			break;
 			
 			default:
-				out << *i;
+				out << *iter;
 				break;
 		}
 	}
@@ -40,7 +40,7 @@ void SqObject::Load( BinaryReader& reader )
 			break;
 
 		case OT_STRING:
-			reader.ReadSQString(m_string);
+			reader.ReadSLString(m_string);
 			break;
 
 		case OT_INTEGER:
@@ -71,7 +71,7 @@ const char* SqObject::GetTypeName( void ) const
 	{
 		case 0:				return "Empty";
 		case OT_NULL:		return "NULL";
-		case OT_STRING:	return "String";
+		case OT_STRING:		return "String";
 		case OT_INTEGER:	return "Integer";
 		case OT_BOOL:		return "Bool";
 		case OT_FLOAT:		return "Float";
@@ -81,7 +81,7 @@ const char* SqObject::GetTypeName( void ) const
 
 
 // ***********************************************************************************************************************
-const  QString& SqObject::GetString(void) const
+const LString& SqObject::GetString(void) const
 {
 	if (m_type != OT_STRING && m_type != OT_NULL)
 		throw Error("Request of String in object of type %s.", GetTypeName());
@@ -118,16 +118,16 @@ bool SqObject::operator == ( const SqObject& other ) const
 	switch(m_type)
 	{
 	case 0:
-	case SqObject::OT_NULL:
+	case OT_NULL:
 		return true;
 
-	case SqObject::OT_STRING:
+	case OT_STRING:
 		return m_string == other.m_string;
 		
-	case SqObject::OT_INTEGER:
+	case OT_INTEGER:
 		return m_integer == other.m_integer;
 
-	case SqObject::OT_FLOAT:
+	case OT_FLOAT:
 		return std::abs(m_float - other.m_float) < 0.00001f;
 	}
 
@@ -135,7 +135,7 @@ bool SqObject::operator == ( const SqObject& other ) const
 }
 
 // ***********************************************************************************************************************
-QTextStream& operator<<(QTextStream& os, const SqObject& obj)
+wostream& operator<< (wostream& os, const SqObject& obj)
 {
 	switch (obj.m_type)
 	{
@@ -147,25 +147,24 @@ QTextStream& operator<<(QTextStream& os, const SqObject& obj)
 		os << "<Empty>";
 		break;
 
-	case SqObject::OT_NULL:
+	case OT_NULL:
 		os << "NULL";
 		break;
 
-	case SqObject::OT_STRING:
+	case OT_STRING:
 		os << '\"';
 		PrintEscapedString(os, obj.m_string);
 		os << '\"';
 		break;
 
-	case SqObject::OT_INTEGER:
+	case OT_INTEGER:
 		os << obj.m_integer;
 		break;
 
-	case SqObject::OT_FLOAT:
+	case OT_FLOAT:
 		os << std::showpoint << obj.m_float;
 		break;
 
 	}
-
 	return os;
 }

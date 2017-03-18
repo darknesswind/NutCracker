@@ -1,10 +1,8 @@
 ﻿#include "stdafx.h"
 #include "NutScript.h"
-#include <iostream>
-#include <fstream>
 
 const char* version = "0.02";
-const char* nutVersion = "2.2.4";
+const char* nutVersion = "3.x";
 
 void Usage( void )
 {
@@ -19,6 +17,8 @@ void Usage( void )
 	std::cout << "   -h         Display usage info" << std::endl;
 	std::cout << "   -cmp       Compare two binary files" << std::endl;
 	std::cout << "   -d <name>  Display debug decompilation for function" << std::endl;
+	std::cout << "   -l <locale> Specify locale name for multibyte string convert" << std::endl;
+	std::cout << "               Read \"https://msdn.microsoft.com/en-us/library/x99tb11d(v=vs.140).aspx\" for detail." << std::endl;
 	std::cout << std::endl;
 	std::cout << std::endl;
 }
@@ -34,7 +34,7 @@ int Compare( const char* file1, const char* file2, bool general )
 
 		if (general)
 		{
-			QTextStream stream;
+			std::wstringstream stream;
 			bool result = s1.GetMain().DoCompare(s2.GetMain(), "", stream);
 
 			if (result)
@@ -48,8 +48,7 @@ int Compare( const char* file1, const char* file2, bool general )
 		}
 		else
 		{
-			QTextStream stream(stdout);
-			bool result = s1.GetMain().DoCompare(s2.GetMain(), "", stream);
+			bool result = s1.GetMain().DoCompare(s2.GetMain(), "", std::wcout);
 			std::cout << std::endl << "Result: " << (result ? "Ok" : "ERROR") << std::endl;
 
 			return result ? 0 : -1;
@@ -62,23 +61,22 @@ int Compare( const char* file1, const char* file2, bool general )
 	}
 }
 
-static QString g_textBuff;
 void DebugFunctionPrint( const NutFunction& function )
 {
 	g_DebugMode = true;
-	g_textBuff.clear();
-	QTextStream stream(&g_textBuff);
-	stream.setCodec("UTF-8");
+
+	std::wstringstream stream;
 	function.GenerateFunctionSource(0, stream);
-	std::cout << g_textBuff.toLocal8Bit().data();
+	std::wcout << stream.str();
 }
 
 int Decompile( const char* file, const char* debugFunction )
 {
+	std::wstringstream stream;
 	try
 	{
 		NutScript script;
-		script.LoadFromFile(QString::fromLocal8Bit(file));
+		script.LoadFromFile(file);
 
 		if (debugFunction)
 		{
@@ -101,14 +99,12 @@ int Decompile( const char* file, const char* debugFunction )
 			}
 		}
 
-		g_textBuff.clear();
-		QTextStream stream(&g_textBuff);
 		script.GetMain().GenerateBodySource(0, stream);
-		std::cout << g_textBuff.toLocal8Bit().data();
+		std::wcout << stream.str();
 	}
 	catch( std::exception& ex )
 	{
-		std::cout << g_textBuff.toLocal8Bit().data();
+		std::wcout << stream.str();
 		std::cout << "Error: " << ex.what() << std::endl;
 		return -1;
 	}
@@ -118,6 +114,7 @@ int Decompile( const char* file, const char* debugFunction )
 
 int main( int argc, char* argv[] )
 {
+	BinaryReader::SetLocale(".OCP");
 	const char* debugFunction = NULL;
 
 	for( int i = 1; i < argc; ++i)

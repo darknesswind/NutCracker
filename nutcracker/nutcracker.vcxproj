@@ -62,7 +62,6 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\Qt\include\QtCore;$(ProjectDir)..\Qt\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -79,7 +78,6 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\Qt\include\QtCore;$(ProjectDir)..\Qt\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -91,6 +89,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Errors.cpp" />
+    <ClCompile Include="LFile.cpp" />
+    <ClCompile Include="LString.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NutDecompiler.cpp" />
     <ClCompile Include="NutScript.cpp" />
@@ -104,21 +104,21 @@
   <ItemGroup>
     <ClInclude Include="BinaryReader.h" />
     <ClInclude Include="BlockState.h" />
+    <ClInclude Include="enums.h" />
     <ClInclude Include="Errors.h" />
     <ClInclude Include="Expressions.h" />
     <ClInclude Include="Formatters.h" />
+    <ClInclude Include="LFile.h" />
+    <ClInclude Include="LString.h" />
     <ClInclude Include="NutScript.h" />
     <ClInclude Include="SqObject.h" />
     <ClInclude Include="Statements.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Qt\src\corelib\Qt5Core.vcxproj">
-      <Project>{8e27267a-38fd-3f4e-b34a-873680d72287}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Natvis Include="NatvisFile.natvis" />
+    <Natvis Include="NatvisFile.natvis">
+      <SubType>Designer</SubType>
+    </Natvis>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,10 +1,4 @@
-﻿
-#pragma once
-
-#include <vector>
-#include <memory>
-#include <QTextStream>
-#include "BinaryReader.h"
+﻿#pragma once
 #include "SqObject.h"
 
 extern bool g_DebugMode;
@@ -35,7 +29,7 @@ private:
 
 	struct LocalVarInfo
 	{
-		QString name;
+		LString name;
 		int start_op;
 		int end_op;
 		int pos;
@@ -50,15 +44,15 @@ private:
 	};
 
 	int m_FunctionIndex;
-	QString m_SourceName;
-	QString m_Name;
+	LString m_SourceName;
+	LString m_Name;
 
 	int m_StackSize;
 	bool m_IsGenerator;
 	int m_VarParams;
 
 	std::vector<SqObject> m_Literals;
-	std::vector<QString> m_Parameters;
+	std::vector<LString> m_Parameters;
 	std::vector<OuterValueInfo> m_OuterValues;
 	LocalVarInfos m_Locals;
 	std::vector<LineInfo> m_LineInfos;
@@ -73,7 +67,7 @@ private:
 	void DecompileJumpInstruction( VMState& state, int arg1 ) const;
 	void DecompileDoWhileLoop( VMState& state, int jumpAddress ) const;
 	void DecompileSwitchBlock( VMState& state ) const;
-	void PrintOpcode( QTextStream& out, int pos, const Instruction& op ) const;
+	void PrintOpcode( std::wostream& out, int pos, const Instruction& op ) const;
 
 public:
 	NutFunction()
@@ -88,18 +82,18 @@ public:
 
 	void Load( BinaryReader& reader );
 
-	void GenerateFunctionSource( int n, QTextStream& out, const QString& name, const std::vector< QString >& defaults ) const;
-	void GenerateBodySource( int n, QTextStream& out ) const;
+	void GenerateFunctionSource( int n, std::wostream& out, const LString& name, const std::vector< LString >& defaults ) const;
+	void GenerateBodySource( int n, std::wostream& out ) const;
 
-	void GenerateFunctionSource( int n, QTextStream& out ) const
+	void GenerateFunctionSource( int n, std::wostream& out ) const
 {	//disasemble a function on the fly
-		std::vector< QString > dummy;
+		std::vector< LString > dummy;
 		GenerateFunctionSource(n, out, m_Name, dummy);
 	}
 
-	bool DoCompare( const NutFunction& other, const QString& parentName, QTextStream& out ) const;
+	bool DoCompare( const NutFunction& other, const LString& parentName, std::wostream& out ) const;
 
-	const NutFunction* FindFunction( const QString& name ) const;
+	const NutFunction* FindFunction( const LString& name ) const;
 	const NutFunction& GetFunction( int i ) const;
 };
 
@@ -111,8 +105,8 @@ class NutScript
 	
 
 public:
-	void LoadFromFile( const QString& );
-	void LoadFromStream( QIODevice* in );
+	void LoadFromFile( const char* );
+	void LoadFromStream( LFile& in );
 
 	const NutFunction& GetMain( void ) const	{ return m_main;	}
 };

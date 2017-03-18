@@ -1,31 +1,25 @@
-﻿
-#pragma once
-
-#include <iostream>
-#include <algorithm>
+﻿#pragma once
 #include "Errors.h"
-#include <QTextCodec>
-#include <QDataStream>
+#include "LFile.h"
 
 // ************************************************************************************************************************************
 typedef void(*ReaderHooker)(void* obj, void* buffer, int size, bool bString);
 class BinaryReader
 {
 private:
-	QIODevice* m_pDevice;
+	LFile& m_file;
 
 	static ReaderHooker fnHook;
 	static void* s_hookObj;
-	static QTextCodec* s_srcCodec;
 
 	// Delete default methods
-	BinaryReader();
-	BinaryReader( const BinaryReader& );
-	BinaryReader& operator = ( const BinaryReader& );
+	BinaryReader() = delete;
+	BinaryReader( const BinaryReader& ) = delete;
+	BinaryReader& operator = ( const BinaryReader& ) = delete;
 
 public:
-	explicit BinaryReader(QIODevice* in)
-	: m_pDevice(in)
+	explicit BinaryReader(LFile& in)
+		: m_file(in)
 	{
 	}
 
@@ -55,7 +49,7 @@ public:
 		if (size < 1)
 			return;
 
-		qint64 nReaded = m_pDevice->read((char*)buffer, size);
+		size_t nReaded = m_file.readAs((char*)buffer, size);
 
 		if (nReaded < 0)
 			throw Error("I/O Error while reading from file.");
@@ -74,28 +68,29 @@ public:
 
 
 	// ******************************************************************************
-	void ReadSQString( QString& str )
+	void ReadSLString(LString& str)
 	{
-		static QByteArray buff;
+		static std::vector<char> buf;
 		int len = ReadInt32();
-		buff.resize(len);
-		Read((void*)buff.data(), len, true);
+		if (len < 0)
+			len = 0;
+		if (buf.size() < (size_t)len)
+			buf.resize(len);
 
-		str = s_srcCodec->toUnicode(buff);
+		Read((void*)buf.data(), len, true);
+
+		str.assign(buf.data(), len);
 	}
 
 
 	// ******************************************************************************
-	void ReadSQStringObject(QString& str)
+	void ReadSLStringObject(LString& str)
 	{
-		static const int StringObjectType = 0x10 | 0x08000000;
-		static const int NullObjectType = 0x01 | 0x01000000;
-
 		int type = ReadInt32();
 
-		if (type == StringObjectType)
-			ReadSQString(str);
-		else if (type == NullObjectType)
+		if (type == OT_STRING)
+			ReadSLString(str);
+		else if (type == OT_NULL)
 			str.clear();
 		else
 			throw Error("Expected string object not found in source binary file.");
@@ -106,17 +101,19 @@ public:
 		fnHook = fn;
 		s_hookObj = s_hookObj;
 	}
-	static void SetCodec(const char* pName)
+	static void SetLocale(const char* pName)
 	{
-		s_srcCodec = QTextCodec::codecForName(pName);
-	}
-	static void SetCodec(QTextCodec* pSrcCodec)
-	{
-		s_srcCodec = pSrcCodec;
+		try
+		{
+			LString::setLocal(std::locale(pName));
+			setlocale(LC_ALL, pName);
+		}
+		catch (std::exception& e)
+		{
+			throw Error(e.what());
+		}
 	}
 };
-
-__declspec(selectany) QTextCodec* BinaryReader::s_srcCodec = QTextCodec::codecForName("Shift-JIS");
 
 __declspec(selectany) void* BinaryReader::s_hookObj = nullptr;
 

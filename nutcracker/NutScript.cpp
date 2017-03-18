@@ -1,19 +1,14 @@
 ﻿#include "stdafx.h"
-// #include <iostream>
-// #include <sstream>
-// #include <fstream>
-
-#include "Errors.h"
 #include "NutScript.h"
 
 bool g_DebugMode = false;
 
 // ***************************************************************************************************************
-const NutFunction* NutFunction::FindFunction( const QString& name ) const
+const NutFunction* NutFunction::FindFunction( const LString& name ) const
 {
-	QString localName, subName;
-	int p = name.indexOf("::");
-	if (p < 0)
+	LString localName, subName;
+	LString::size_type p = name.find(L"::");
+	if (p == LString::npos)
 	{
 		localName = name;
 	}
@@ -23,7 +18,7 @@ const NutFunction* NutFunction::FindFunction( const QString& name ) const
 		subName = name.mid(p + 2);
 	}
 
-	if (localName.isEmpty())
+	if (localName.empty())
 		return NULL;
 
 	int pos = -1;
@@ -45,7 +40,7 @@ const NutFunction* NutFunction::FindFunction( const QString& name ) const
 	if (pos < 0 || pos >= (int)m_Functions.size())
 		return NULL;
 
-	if (subName.isEmpty())
+	if (subName.empty())
 		return &m_Functions[pos];
 	else
 		return m_Functions[pos].FindFunction(subName);
@@ -67,8 +62,8 @@ void NutFunction::Load( BinaryReader& reader )
 {
 	reader.ConfirmOnPart();
 
-	reader.ReadSQStringObject(m_SourceName);
-	reader.ReadSQStringObject(m_Name);
+	reader.ReadSLStringObject(m_SourceName);
+	reader.ReadSLStringObject(m_Name);
 
 	reader.ConfirmOnPart();
 	
@@ -91,7 +86,7 @@ void NutFunction::Load( BinaryReader& reader )
 	
 	m_Parameters.resize(nParameters);	
 	for(int i = 0; i < nParameters; ++i)
-		reader.ReadSQStringObject(m_Parameters[i]);
+		reader.ReadSLStringObject(m_Parameters[i]);
 
 	reader.ConfirmOnPart();
 
@@ -108,7 +103,7 @@ void NutFunction::Load( BinaryReader& reader )
 	m_Locals.resize(nLocalVarInfos);
 	for(int i = 0; i < nLocalVarInfos; ++i)
 	{
-		reader.ReadSQStringObject(m_Locals[i].name);
+		reader.ReadSLStringObject(m_Locals[i].name);
 		m_Locals[i].pos = reader.ReadInt32();
 		m_Locals[i].start_op = reader.ReadInt32();
 		m_Locals[i].end_op = reader.ReadInt32();
@@ -154,7 +149,7 @@ void NutFunction::Load( BinaryReader& reader )
 
 	for (LocalVarInfos::iterator i = m_Locals.begin(); i != m_Locals.end(); ++i)
 	{
-		if (i->name == "@ITERATOR@")
+		if (i->name == L"@ITERATOR@")
 		{
 			// Hack - sq will push three local variables for every foreach loop, last one is named @ITERATOR@,
 			// we are searching for that triples and mark, because their scopes are badly set
@@ -172,29 +167,25 @@ void NutFunction::Load( BinaryReader& reader )
 
 
 // ***************************************************************************************************************
-void NutScript::LoadFromFile( const QString& fileName )
+void NutScript::LoadFromFile( const char* fileName )
 {
-	QFile file(fileName);
-
-	if (!file.open(QFile::ReadOnly))
-		throw Error("Unable to open file: \"%s\"", file.errorString().toLocal8Bit().data());
+	LFile file;
+	if (!file.openRead(fileName))
+		throw Error("Unable to open file: \"%s\"", fileName);
 
 	try
 	{
-		LoadFromStream(&file);
+		LoadFromStream(file);
 	}
 	catch(...)
 	{
-		file.close();
 		throw;
 	}
-
-	file.close();
 }
 
 
 // ***************************************************************************************************************
-void NutScript::LoadFromStream( QIODevice* in )
+void NutScript::LoadFromStream( LFile& in )
 {
 	BinaryReader reader(in);
 
@@ -236,7 +227,7 @@ bool Eq( const NutFunction::Instruction& a, const NutFunction::Instruction& b )
 }
 
 // ***************************************************************************************************************
-bool NutFunction::DoCompare( const NutFunction& other, const QString& parentName, QTextStream& out ) const
+bool NutFunction::DoCompare( const NutFunction& other, const LString& parentName, std::wostream& out ) const
 {
 	bool functionsOk = true;
 	bool literalsOk = true;
@@ -245,20 +236,20 @@ bool NutFunction::DoCompare( const NutFunction& other, const QString& parentName
 	bool instructionsOk = true;
 
 
-	QString name;
+	LString name;
 	
-	if (!parentName.isEmpty())
-		name.append(parentName).append("::");
+	if (!parentName.empty())
+		name.append(parentName).append(L"::");
 
-	if (!m_Name.isEmpty())
+	if (!m_Name.empty())
 		name.append(m_Name);
 	else
 		name.append('[').append(m_FunctionIndex).append(']');
 
 	if (m_Functions.size() != other.m_Functions.size())
 	{
-		out << name << ':' << endl;
-		out << "    - different number of subfunctions: " << m_Functions.size() << " to " << other.m_Functions.size() << endl;
+		out << name << ':' << std::endl;
+		out << "    - different number of subfunctions: " << m_Functions.size() << " to " << other.m_Functions.size() << std::endl;
 		functionsOk = false;
 	}
 	else
@@ -267,12 +258,12 @@ bool NutFunction::DoCompare( const NutFunction& other, const QString& parentName
 			if (!m_Functions[i].DoCompare(other.m_Functions[i], name, out))
 				functionsOk = false;
 
-		out << name << ':' << endl;
+		out << name << ':' << std::endl;
 	}
 
 	if (m_Literals.size() != other.m_Literals.size())
 	{
-		out << "    - different number of literals: " << m_Literals.size() << " to " << other.m_Literals.size() << endl;
+		out << "    - different number of literals: " << m_Literals.size() << " to " << other.m_Literals.size() << std::endl;
 		literalsOk = false;
 	}
 	else
@@ -280,20 +271,20 @@ bool NutFunction::DoCompare( const NutFunction& other, const QString& parentName
 		for(size_t i = 0; i < m_Literals.size(); ++i)
 			if (m_Literals[i] != other.m_Literals[i])
 			{
-				out << "    - different literals @ " << i << ": \"" << m_Literals[i] << "\" and \"" << other.m_Literals[i] << "\"" << endl;
+				out << "    - different literals @ " << i << ": \"" << m_Literals[i] << "\" and \"" << other.m_Literals[i] << "\"" << std::endl;
 				literalsOk = false;
 			}
 	}
 
 	if (m_Parameters.size() != other.m_Parameters.size())
 	{
-		out << "    - different number of parameters: " << m_Parameters.size() << " to " << other.m_Parameters.size() << endl;
+		out << "    - different number of parameters: " << m_Parameters.size() << " to " << other.m_Parameters.size() << std::endl;
 		parametersOk = false;
 	}
 
 	if (m_OuterValues.size() != other.m_OuterValues.size())
 	{
-		out << "    - different number of outer values: " << m_OuterValues.size() << " to " << other.m_OuterValues.size() << endl;
+		out << "    - different number of outer values: " << m_OuterValues.size() << " to " << other.m_OuterValues.size() << std::endl;
 		outerValuesOk = false;
 	}
 	else
@@ -301,14 +292,14 @@ bool NutFunction::DoCompare( const NutFunction& other, const QString& parentName
 		for(size_t i = 0; i < m_OuterValues.size(); ++i)
 			if (m_OuterValues[i].src != other.m_OuterValues[i].src)
 			{
-				out << "    - different outer value source @ " << i << ": " << m_OuterValues[i].src << " and " << other.m_OuterValues[i].src << endl;
+				out << "    - different outer value source @ " << i << ": " << m_OuterValues[i].src << " and " << other.m_OuterValues[i].src << std::endl;
 				outerValuesOk = false;
 			}
 	}
 
 	if (m_Instructions.size() != other.m_Instructions.size())
 	{
-		out << "    - different number of instructions: " << m_Instructions.size() << " to " << other.m_Instructions.size() << endl;
+		out << "    - different number of instructions: " << m_Instructions.size() << " to " << other.m_Instructions.size() << std::endl;
 		instructionsOk = false;
 	}
 	
@@ -324,31 +315,31 @@ bool NutFunction::DoCompare( const NutFunction& other, const QString& parentName
 
 			if ((i + 1) < m_Instructions.size() && Eq(m_Instructions[i + 1], b))
 			{
-				out << "    - instruction missing in second @ [" << i  << "]<->[" << j << "]:" << endl;
+				out << "    - instruction missing in second @ [" << i  << "]<->[" << j << "]:" << std::endl;
 				out << "          ";
 				PrintOpcode(out, i, a);
-				out << endl;
+				out << std::endl;
 				--j;
 			}
 			else if ((j + 1) < other.m_Instructions.size() && Eq(other.m_Instructions[j + 1], a))
 			{
-				out << "    - instruction missing in first @ [" << i  << "]<->[" << j << "]:" << endl;
+				out << "    - instruction missing in first @ [" << i  << "]<->[" << j << "]:" << std::endl;
 				out << "          ";
 				other.PrintOpcode(out, i, b);
-				out << endl;
+				out << std::endl;
 				--i;
 			}
 			else
 			{
-				out << "    - different instructions @ [" << i  << "]<->[" << j << "]:" << endl;
+				out << "    - different instructions @ [" << i  << "]<->[" << j << "]:" << std::endl;
 				
 				out << "          ";
 				PrintOpcode(out, i, a);
-				out << endl;
+				out << std::endl;
 
 				out << "          ";
 				other.PrintOpcode(out, i, b);
-				out << endl;
+				out << std::endl;
 
 				if (a.op != b.op)
 					break;

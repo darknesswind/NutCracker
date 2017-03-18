@@ -1,17 +1,11 @@
 ﻿#include "stdafx.h"
-// #include <iostream>
-// #include <sstream>
-// #include <iomanip>
-#include <cassert>
-#include <algorithm>
 
-#include "Errors.h"
 #include "NutScript.h"
 #include "Formatters.h"
 #include "Expressions.h"
 #include "Statements.h"
 #include "BlockState.h"
-
+using namespace std;
 const char* OpcodeNames[] = 
 {
 	"OP_LINE",
@@ -244,7 +238,7 @@ public:
 		{
 			// Stack variable is not initialized - temporary make marker for it
 			return ExpressionPtr(new VariableExpression(
-				QString("$[stack offset %1]").arg(pos)));
+				LStrBuilder("$[stack offset %1]").arg(pos)));
 		}
 		else if (!m_Stack[pos].pendingStatements.empty())
 		{
@@ -412,7 +406,7 @@ public:
 		}
 	}
 
-	void PrintOutput( QTextStream& out, int n )
+	void PrintOutput( std::wostream& out, int n )
 	{
 		m_Block->Postprocess();
 		m_Block->GenerateBlockContentCode(out, n);
@@ -430,10 +424,9 @@ public:
 
 	void PushUnknownOpcode( void )
 	{
-		QString text;
-		QTextStream buff(&text);
+		std::wstringstream buff;
 		m_Parent.PrintOpcode(buff, IP() - 1, m_Parent.m_Instructions[IP() - 1]);
-		PushStatement(StatementPtr(new CommentStatement(text)));
+		PushStatement(StatementPtr(new CommentStatement(buff.str())));
 	}
 };
 
@@ -459,7 +452,7 @@ public:
 		m_Defaults.push_back(value);
 	}
 
-	virtual void GenerateCode( QTextStream& out, int n ) const
+	virtual void GenerateCode( std::wostream& out, int n ) const
 	{
 		if (g_DebugMode)
 		{
@@ -467,13 +460,12 @@ public:
 			return;
 		}
 		
-		std::vector< QString > defaults;
+		std::vector< LString > defaults;
 		for( std::vector<ExpressionPtr>::const_iterator i = m_Defaults.begin(); i != m_Defaults.end(); ++i)
 		{
-			defaults.push_back(QString());
-			QTextStream defaultBuffer(&defaults.back());
+			std::wstringstream defaultBuffer;
 			(*i)->GenerateCode(defaultBuffer, n + 1);
-			
+			defaults.emplace_back(defaultBuffer.str());
 		}
 
 		m_Function.GenerateFunctionSource(n, out, m_name, defaults);
@@ -672,7 +664,7 @@ void NutFunction::DecompileStatement( VMState& state ) const
 				}
 				else
 				{
-					ExpressionPtr appendFunctionExp = ExpressionPtr(new ArrayIndexingExpression(arrayExp, ExpressionPtr(new ConstantExpression("append"))));
+					ExpressionPtr appendFunctionExp = ExpressionPtr(new ArrayIndexingExpression(arrayExp, ExpressionPtr(new ConstantExpression(L"append"))));
 					shared_ptr<FunctionCallExpression> callExp = shared_ptr<FunctionCallExpression>(new FunctionCallExpression(appendFunctionExp));
 					callExp->AddArgument(arrayExp);
 					callExp->AddArgument(valueExp);
@@ -923,7 +915,7 @@ void NutFunction::DecompileStatement( VMState& state ) const
 
 					// Search for local variable of exception handler
 					state.AtStack(arg0) =  ExpressionPtr();
-					QString varName;
+					LString varName;
 
 					for( vector<NutFunction::LocalVarInfo>::const_iterator i = m_Locals.begin(); i != m_Locals.end(); ++i )
 						if (i->pos == arg0 && i->start_op == state.IP())
@@ -1505,7 +1497,7 @@ void NutFunction::DecompileSwitchBlock( VMState& state ) const
 
 
 // ***************************************************************************************************************
-void NutFunction::PrintOpcode( QTextStream& out, int pos, const Instruction& op ) const
+void NutFunction::PrintOpcode(std::wostream& out, int pos, const Instruction& op ) const
 {
 	unsigned int code = static_cast<unsigned int>(op.op);
 	const char* codeName;
@@ -1516,10 +1508,12 @@ void NutFunction::PrintOpcode( QTextStream& out, int pos, const Instruction& op 
 		codeName = OpcodeNames[code];
 
 	out << "["; 
-	out << qSetFieldWidth(3) << qSetPadChar('0') << pos << qSetPadChar(' ') << reset;
+	out.fill('0');
+	out << std::setw(3) << pos;
+	out.fill(' ');
 	out << "]  " << codeName << spaces(14 - strlen(codeName));
 
-	out << qSetFieldWidth(5) << (int)op.arg0 << "  " << reset;
+	out << std::setw(5) << (int)op.arg0 << "  ";
 
 	switch(code)
 	{
@@ -1529,16 +1523,16 @@ void NutFunction::PrintOpcode( QTextStream& out, int pos, const Instruction& op 
 
 		case OP_DLOAD:
 			out << m_Literals[op.arg1];
-			out << qSetFieldWidth(5) << (int)op.arg2 << reset;
+			out << std::setw(5) << (int)op.arg2;
 			out << "  " << m_Literals[ static_cast<unsigned char>(op.arg3) ];
 			break;
 
 		case OP_LOADINT:
-			out << qSetFieldWidth(5) << op.arg1 << reset;
+			out << std::setw(5) << op.arg1;
 			break;
 
 		case OP_LOADFLOAT:
-			out << qSetFieldWidth(5) << op.arg1_float << reset;
+			out << std::setw(5) << op.arg1_float;
 			break;
 
 		case OP_LOADBOOL:
@@ -1554,7 +1548,7 @@ void NutFunction::PrintOpcode( QTextStream& out, int pos, const Instruction& op 
 		case OP_PREPCALLK:
 		case OP_GETK:
 			out << '(' << (int)op.arg2 << ")." << m_Literals[op.arg1].GetString() << "  ";
-			out << qSetFieldWidth(5) << (int)op.arg3 << reset;
+			out << std::setw(5) << (int)op.arg3;
 			break;
 
 
@@ -1563,26 +1557,26 @@ void NutFunction::PrintOpcode( QTextStream& out, int pos, const Instruction& op 
 		default:	
 			
 			//out << "  0x" << qSetFieldWidth(8) << qSetPadChar('0') << std::setbase(16) << op.arg1 << qSetPadChar(' ') << std::setbase(10);
-			out << qSetFieldWidth(5) << (int)op.arg1;
-			out << qSetFieldWidth(5) << (int)op.arg2;
-			out << qSetFieldWidth(5) << (int)op.arg3 << reset;
+			out << std::setw(5) << (int)op.arg1;
+			out << std::setw(5) << (int)op.arg2;
+			out << std::setw(5) << (int)op.arg3;
 
 			break;
 	}
 }
 
 // ***************************************************************************************************************
-void NutFunction::GenerateFunctionSource( int n, QTextStream& out, const QString& name, const std::vector< QString >& defaults ) const
+void NutFunction::GenerateFunctionSource( int n, std::wostream& out, const LString& name, const std::vector< LString >& defaults ) const
 {
-	if (name != "constructor")
-		out << "function ";
+	if (name != L"constructor")
+		out << L"function ";
 	out << name << '(';
 	
 	int paramsCount = 0;
 
 	for(size_t i = 0; i < m_Parameters.size(); ++i)
 	{
-		if (i == 0 && m_Parameters[i] == "this")
+		if (i == 0 && m_Parameters[i] == L"this")
 			continue;
 
 		if (paramsCount == 0)
@@ -1626,56 +1620,56 @@ void NutFunction::GenerateFunctionSource( int n, QTextStream& out, const QString
 		out << " )";
 	}
 
-	out << endl;
+	out << std::endl;
 
-	out << indent(n) << "{" << endl;
+	out << indent(n) << "{" << std::endl;
 
 	GenerateBodySource(n + 1, out);
 
-	out << indent(n) << "}";// << endl;
-	//out << endl;
-	//out << endl;
+	out << indent(n) << "}";// << std::endl;
+	//out << std::endl;
+	//out << std::endl;
 }
 
 
 // ***************************************************************************************************************
-void NutFunction::GenerateBodySource( int n, QTextStream& out ) const
+void NutFunction::GenerateBodySource( int n, std::wostream& out ) const
 {
 	//for( auto i = m_Functions.begin(); i != m_Functions.end(); ++i)
 	//	i->GenerateFunctionSource(n, out, extraInfo);
 
 	if (m_IsGenerator)
-		out << indent(n) << "// Function is a generator." << endl;
+		out << indent(n) << "// Function is a generator." << std::endl;
 
 	if (g_DebugMode)
 	{
-		out << indent(n) << "// Defaults:" << endl;
+		out << indent(n) << "// Defaults:" << std::endl;
 		for( std::vector<int>::const_iterator i = m_DefaultParams.begin(); i != m_DefaultParams.end(); ++i)
-			out << indent(n) << "//\t" << *i << endl;
+			out << indent(n) << "//\t" << *i << std::endl;
 		
-		out << endl;
+		out << std::endl;
 
-		out << indent(n) << "// Literals:" << endl;
+		out << indent(n) << "// Literals:" << std::endl;
 		for( std::vector<SqObject>::const_iterator i = m_Literals.begin(); i != m_Literals.end(); ++i)
-			out << indent(n) << "//\t" << *i << endl;
+			out << indent(n) << "//\t" << *i << std::endl;
 
-		out << endl;
+		out << std::endl;
 
-		out << indent(n) << "// Outer values:" << endl;
+		out << indent(n) << "// Outer values:" << std::endl;
 		for( vector<OuterValueInfo>::const_iterator i = m_OuterValues.begin(); i != m_OuterValues.end(); ++i)
-			out << indent(n) << "//\t" << i->type << "  src=" << i->src << "  name=" << i->name << endl; 
+			out << indent(n) << "//\t" << i->type << "  src=" << i->src << "  name=" << i->name << std::endl; 
 
-		out << endl;
+		out << std::endl;
 
-		out << indent(n) << "// Local identifiers:" << endl;
+		out << indent(n) << "// Local identifiers:" << std::endl;
 		for(vector<NutFunction::LocalVarInfo>::const_reverse_iterator i = m_Locals.rbegin(); i != m_Locals.rend(); ++i)
 		{
 			out << indent(n) << "//   -" << i->name << spaces(10 - i->name.size()) 
-				<< " // pos=" << i->pos << "  start=" << i->start_op << "  end=" << i->end_op << (i->foreachLoopState ? " foreach state" : "") << endl;
+				<< " // pos=" << i->pos << "  start=" << i->start_op << "  end=" << i->end_op << (i->foreachLoopState ? " foreach state" : "") << std::endl;
 		}
 
-		out << endl;
-		out << indent(n) << "// Instructions:" << endl;
+		out << std::endl;
+		out << indent(n) << "// Instructions:" << std::endl;
 
 		int currentLine = 0;
 		vector<LineInfo>::const_iterator lineInfo = m_LineInfos.begin();
@@ -1687,14 +1681,14 @@ void NutFunction::GenerateBodySource( int n, QTextStream& out ) const
 				currentLine = lineInfo->line;
 				++lineInfo;
 			}
-
-			out << indent(n) << "// " << qSetPadChar(' ') << qSetFieldWidth(5) << currentLine << "  ";
+			out.fill(' ');
+			out << indent(n) << "// " << std::setw(5) << currentLine << "  ";
 			PrintOpcode(out, (int)i, m_Instructions[i]);
-			out << endl;
+			out << std::endl;
 		}
 
-		out << indent(n) << endl;
-		out << indent(n) << "// Decompilation attempt:" << endl;
+		out << indent(n) << std::endl;
+		out << indent(n) << "// Decompilation attempt:" << std::endl;
 	}
 
 	// Crate new state for decompiler virtual machine
