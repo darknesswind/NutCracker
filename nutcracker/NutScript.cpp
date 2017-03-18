@@ -62,8 +62,8 @@ void NutFunction::Load( BinaryReader& reader )
 {
 	reader.ConfirmOnPart();
 
-	reader.ReadSLStringObject(m_SourceName);
-	reader.ReadSLStringObject(m_Name);
+	reader.ReadSQStringObject(m_SourceName);
+	reader.ReadSQStringObject(m_Name);
 
 	reader.ConfirmOnPart();
 	
@@ -86,7 +86,7 @@ void NutFunction::Load( BinaryReader& reader )
 	
 	m_Parameters.resize(nParameters);	
 	for(int i = 0; i < nParameters; ++i)
-		reader.ReadSLStringObject(m_Parameters[i]);
+		reader.ReadSQStringObject(m_Parameters[i]);
 
 	reader.ConfirmOnPart();
 
@@ -103,7 +103,7 @@ void NutFunction::Load( BinaryReader& reader )
 	m_Locals.resize(nLocalVarInfos);
 	for(int i = 0; i < nLocalVarInfos; ++i)
 	{
-		reader.ReadSLStringObject(m_Locals[i].name);
+		reader.ReadSQStringObject(m_Locals[i].name);
 		m_Locals[i].pos = reader.ReadInt32();
 		m_Locals[i].start_op = reader.ReadInt32();
 		m_Locals[i].end_op = reader.ReadInt32();

@@ -40,7 +40,7 @@ void SqObject::Load( BinaryReader& reader )
 			break;
 
 		case OT_STRING:
-			reader.ReadSLString(m_string);
+			reader.ReadSQString(m_string);
 			break;
 
 		case OT_INTEGER:

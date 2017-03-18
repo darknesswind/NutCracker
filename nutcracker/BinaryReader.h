@@ -68,7 +68,7 @@ public:
 
 
 	// ******************************************************************************
-	void ReadSLString(LString& str)
+	void ReadSQString(LString& str)
 	{
 		static std::vector<char> buf;
 		int len = ReadInt32();
@@ -84,12 +84,12 @@ public:
 
 
 	// ******************************************************************************
-	void ReadSLStringObject(LString& str)
+	void ReadSQStringObject(LString& str)
 	{
 		int type = ReadInt32();
 
 		if (type == OT_STRING)
-			ReadSLString(str);
+			ReadSQString(str);
 		else if (type == OT_NULL)
 			str.clear();
 		else
