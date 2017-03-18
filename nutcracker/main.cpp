@@ -134,6 +134,24 @@ int main( int argc, char* argv[] )
 			debugFunction = argv[i + 1];
 			i += 1;
 		}
+		if (0 == _stricmp(argv[i], "-l"))
+		{
+			if ((argc - i) < 2)
+			{
+				Usage();
+				return -1;
+			}
+
+			try
+			{
+				BinaryReader::SetLocale(argv[i + 1]);
+			}
+			catch (std::exception& ex)
+			{
+				std::cout << "Error: " << ex.what() << std::endl;
+			}
+			i += 1;
+		}
 		else if (0 == _stricmp(argv[i], "-cmp"))
 		{
 			if ((argc - i) < 3)
