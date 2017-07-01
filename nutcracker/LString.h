@@ -9,6 +9,7 @@ class LString : public std::wstring
 	typedef const wchar_t* CWStrPtr;
 	typedef char* StrPtr;
 	typedef const char* CStrPtr;
+	typedef unsigned char Byte;
 	typedef std::codecvt<wchar_t, char, mbstate_t> converter_type;
 public:
 	LString() = default;
@@ -54,8 +55,11 @@ class LStrBuilder
 	typedef char* StrPtr;
 	typedef const char* CStrPtr;
 public:
+	enum Mode { modePattern, modeJoin };
+
 	LStrBuilder(CWStrPtr pPattern);
 	LStrBuilder(CStrPtr pPattern);
+	LStrBuilder(Mode mode, CWStrPtr pArg);
 	~LStrBuilder();
 
 	operator LString() { return apply(); }
@@ -71,20 +75,23 @@ public:
 	LStrBuilder& arg(const std::wstring& val) { return arg(val.c_str()); }
 
 private:
-	void reset();
+	void reset(Mode mode);
 	void analyzePattern();
 	bool isFull();
+	LString applyPattern() const;
+	LString applyJoin() const;
 
 private:
 	LString m_pattern;
 
 	struct ChpxInfo
 	{
-		size_t begin	= 0;
-		size_t len		= 0;
-		size_t argID		= 0;
+		size_t begin{ 0 };
+		size_t len{ 0 };
+		size_t argID{ 0 };
 	};
 	std::vector<ChpxInfo> m_chpxes;
 	std::vector<LString> m_args;
-	size_t m_argCount = 0;
+	size_t m_argCount{ 0 };
+	Mode m_mode{ modeJoin };
 };
