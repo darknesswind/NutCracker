@@ -5,7 +5,7 @@ I found the source from http://cheatengine.org/forum/viewtopic.php?p=5477214&sid
 
 ## PS:
 This program work `only` on `standard` squirrel nut file.
-Please note that squirrel is an open source script language, the user can modify the compiler result in there want.
+Please note that squirrel is an open source script language, the user can modify the compiler result in their want.
 The modify may include but not only: encrypt the string and bytecode, add a custom op code, ... ect.
 
 ## PS2:
