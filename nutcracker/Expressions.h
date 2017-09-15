@@ -215,7 +215,8 @@ public:
 	{
 		m_isLiteral = false;
 		m_text.setNum(value, 8);
-		if (m_text.indexOf('.') < 0)
+
+		if (m_text.indexOf('.') == std::string::npos)
 			m_text.append(L".0");
 	}
 
