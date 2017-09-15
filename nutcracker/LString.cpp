@@ -55,10 +55,10 @@ LString& LString::setNum(unsigned int val, int base /*= 10*/)
 
 LString& LString::setNum(float val, int prec /*= 6*/)
 {
-	int decimal, sign;
-	char buff[_CVTBUFSIZE + 1] = { 0 };
-	_fcvt_s(buff, val, prec, &decimal, &sign);
-	buff[_CVTBUFSIZE] = 0;
+	std::string format("%." + std::to_string(prec) + "f");
+	char buff[33] = { 0 };
+	sprintf_s(buff, format.c_str(), val);
+
 	assign(buff);
 	return (*this);
 }
