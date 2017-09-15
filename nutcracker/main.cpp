@@ -134,7 +134,7 @@ int main( int argc, char* argv[] )
 			debugFunction = argv[i + 1];
 			i += 1;
 		}
-		if (0 == _stricmp(argv[i], "-l"))
+		else if (0 == _stricmp(argv[i], "-l"))
 		{
 			if ((argc - i) < 2)
 			{
@@ -173,7 +173,6 @@ int main( int argc, char* argv[] )
 		else
 		{
 			int res = Decompile(argv[i], debugFunction);
-			system("pause");
 			return res;
 		}
 	}
