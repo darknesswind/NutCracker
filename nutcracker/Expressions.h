@@ -207,7 +207,7 @@ public:
 	void set( unsigned int value )
 	{
 		m_isLiteral = false;
-		m_text.setNum(value);
+		m_text.setNum(int(value));
 	}
 
 
