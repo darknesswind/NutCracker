@@ -632,6 +632,10 @@ void NutFunction::DecompileStatement( VMState& state ) const
 
 		// *** OP_JNZ should not be matched - processed in do...while decompilation
 
+		case OP_JCMP:
+			DecompileForLoop(state, arg0, arg1, arg2, arg3);
+			break;
+
 		case OP_JZ:
 			DecompileJumpZeroInstruction(state, arg0, arg1);
 			break;
@@ -1032,7 +1036,6 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			break;
 		case OP_LINE:	// mark line number;
 			break;
-		case OP_JCMP:
 		default:
 			state.PushUnknownOpcode();
 
@@ -1262,6 +1265,45 @@ void NutFunction::DecompileDoWhileLoop( VMState& state, int jumpAddress ) const
 	state.m_BlockState = prevBlockState;
 }
 
+void NutFunction::DecompileForLoop(VMState& state, int end, int offsetIp, int iter, int cmpOp) const
+{
+	ExpressionPtr iterExp = state.GetVar(iter);
+	ExpressionPtr conditionExp = ExpressionPtr(new BinaryOperatorExpression(ComparisionOpcodeNames[cmpOp], iterExp, state.GetVar(end)));
+
+	BlockStatementPtr block = state.PushBlock();
+
+	// While block found - push loop block
+	BlockState prevBlockState = state.m_BlockState;
+	state.m_BlockState.inLoop = BlockState::CmpForLoop;
+	state.m_BlockState.inSwitch = 0;
+	state.m_BlockState.blockStart = state.IP() - 1;
+	state.m_BlockState.blockEnd = state.IP() + offsetIp - 1;
+	state.m_BlockState.parent = &prevBlockState;
+
+	int loopEndIp = state.IP() + offsetIp;
+
+	// Decompile loop block
+	while (!state.EndOfInstructions() && state.IP() < loopEndIp)
+	{
+		if (state.IP() == (loopEndIp - 1) && m_Instructions[state.IP()].op == OP_JMP && m_Instructions[state.IP()].arg1 < 1)
+		{
+			// Skip loop ending JMP
+			state.NextInstruction();
+		}
+		else
+		{
+			DecompileStatement(state);
+		}
+	}
+	
+	LoopBaseStatementPtr stat = LoopBaseStatementPtr(new ForStatement(nullptr, conditionExp, nullptr, state.PopBlock(block)));
+	stat->SetLoopBlock(state.m_BlockState);
+
+	// Pop block state
+	state.m_BlockState = prevBlockState;
+
+	state.PushStatement(stat);
+}
 
 // ***************************************************************************************************************
 void NutFunction::DecompileJumpInstruction( VMState& state, int arg1 ) const
@@ -1481,9 +1523,10 @@ void NutFunction::DecompileAppendArray(VMState& state, int arg0, int arg1, Appen
 	ExpressionPtr valueExp;
 	union Target
 	{
-		unsigned int intVal;
+		int raw;
+		unsigned int uintVal;
 		float floatVal;
-	};
+	} target{ arg1 };
 
 	switch (aat)
 	{
@@ -1494,11 +1537,13 @@ void NutFunction::DecompileAppendArray(VMState& state, int arg0, int arg1, Appen
 		valueExp = ExpressionPtr(new ConstantExpression(m_Literals[arg1]));
 		break;
 	case AAT_INT:
+		valueExp = ExpressionPtr(new ConstantExpression(target.uintVal));
+		break;
 	case AAT_BOOL:
-		valueExp = ExpressionPtr(new ConstantExpression(((Target*)&arg1)->intVal));
+		valueExp = ExpressionPtr(new ConstantExpression(arg1 != 0));
 		break;
 	case AAT_FLOAT:
-		valueExp = ExpressionPtr(new ConstantExpression(((Target*)&arg1)->floatVal));
+		valueExp = ExpressionPtr(new ConstantExpression(target.floatVal));
 		break;
 	default:
 		if (arg3 == 0xFF)

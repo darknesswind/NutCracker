@@ -2,9 +2,13 @@
 
 struct BlockState
 {
-	static const int WhileLoop = 1;
-	static const int DoWhileLoop = 2;
-	static const int ForeachLoop = 3;
+	enum LoopState
+	{
+		WhileLoop = 1,
+		DoWhileLoop = 2,
+		ForeachLoop = 3,
+		CmpForLoop = 4,
+	};
 
 	static const int UsedForwardJumpContinue = 0x01;
 	static const int UsedBackwardJumpContinue = 0x02;

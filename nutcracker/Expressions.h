@@ -137,6 +137,11 @@ public:
 		set(value);
 	}
 
+	explicit ConstantExpression( bool value )
+	{
+		set(value);
+	}
+
 	explicit ConstantExpression( const SqObject& obj )
 	{
 		switch(obj.GetType())
@@ -152,6 +157,9 @@ public:
 				break;
 
 			case OT_BOOL:
+				set(obj.GetInteger() != 0);
+				break;
+
 			case OT_INTEGER:
 				set(obj.GetInteger());
 				break;
@@ -210,7 +218,6 @@ public:
 		m_text.setNum(int(value));
 	}
 
-
 	void set( float value )
 	{
 		m_isLiteral = false;
@@ -220,6 +227,11 @@ public:
 			m_text.append(L".0");
 	}
 
+	void set(bool value)
+	{
+		m_isLiteral = false;
+		m_text = value ? L"true" : L"false";
+	}
 
 	virtual int GetType( void ) const
 	{
