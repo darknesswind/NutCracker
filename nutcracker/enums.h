@@ -132,3 +132,11 @@ enum ComparisionOpcode
 	CMP_L = 3,
 	CMP_LE = 4
 };
+
+enum AppendArrayType {
+	AAT_STACK = 0,
+	AAT_LITERAL = 1,
+	AAT_INT = 2,
+	AAT_FLOAT = 3,
+	AAT_BOOL = 4
+};

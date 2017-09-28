@@ -67,6 +67,8 @@ private:
 	void DecompileJumpInstruction( VMState& state, int arg1 ) const;
 	void DecompileDoWhileLoop( VMState& state, int jumpAddress ) const;
 	void DecompileSwitchBlock( VMState& state ) const;
+	void DecompileAppendArray( VMState& state, int arg0, int arg1, AppendArrayType arg2, int arg3) const;
+
 	void PrintOpcode( std::wostream& out, int pos, const Instruction& op ) const;
 
 public:
