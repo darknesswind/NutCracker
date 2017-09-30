@@ -144,23 +144,35 @@ void NutFunction::Load( BinaryReader& reader )
 	m_IsGenerator = reader.ReadBool();
 	m_VarParams = reader.ReadInt32();
 
-	// Preprocess local variables
-	int f = 0;
-
-	for (LocalVarInfos::iterator i = m_Locals.begin(); i != m_Locals.end(); ++i)
+	// Mark foreach statement local variables 
+	// sq v3.0.7 will push either three or two local variables for every foreach loop.
+	// The third one, that sometimes is not present, is named @ITERATOR@.
+	// The first var has it's scope start at (OP_FOREACH instruction idx - 1)
+	// Then we mark the next var in locals array and the third if it's @ITERATOR@ var
+	for (std::vector<Instruction>::iterator i = m_Instructions.begin(); i != m_Instructions.end(); ++i)
 	{
-		if (i->name == L"@ITERATOR@")
+		if (i->op == OP_FOREACH)
 		{
-			// Hack - sq will push three local variables for every foreach loop, last one is named @ITERATOR@,
-			// we are searching for that triples and mark, because their scopes are badly set
+			const int ipos = i - m_Instructions.begin();
+			const int idxScopeStart = ipos - 1;
+			const char idxLocalPos = i->arg2;
 
-			i->foreachLoopState = true;
-			f = 2;
-		}
-		else if (f > 0)
-		{
-			i->foreachLoopState = true;
-			--f;
+			for (LocalVarInfos::reverse_iterator v = m_Locals.rbegin(); v != m_Locals.rend();++v)
+			{
+				if (v->pos == idxLocalPos && v->start_op == idxScopeStart)
+				{
+					// idx
+					v->foreachLoopState = true;
+					// value
+					(++v)->foreachLoopState = true;
+					// iterator (if present)
+					if (++v == m_Locals.rend()) break;
+					if(v->name == L"@ITERATOR@")
+					{
+						v->foreachLoopState = true;
+					}
+				}
+			}
 		}
 	}
 }
