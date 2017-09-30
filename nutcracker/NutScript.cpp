@@ -93,7 +93,7 @@ void NutFunction::Load( BinaryReader& reader )
 	m_OuterValues.resize(nOuterValues);
 	for(int i = 0; i < nOuterValues; ++i)
 	{
-		m_OuterValues[i].type = reader.ReadInt32();
+		m_OuterValues[i].type = (OuterValueInfo::SQOuterType)reader.ReadInt32();
 		m_OuterValues[i].src.Load(reader);
 		m_OuterValues[i].name.Load(reader);
 	}

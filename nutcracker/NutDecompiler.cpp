@@ -640,6 +640,21 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			DecompileJumpZeroInstruction(state, arg0, arg1);
 			break;
 
+		case OP_SETOUTER:
+		{
+			ExpressionPtr leftArg = ExpressionPtr(new LocalVariableExpression(m_OuterValues[arg1].name.GetString()));
+			ExpressionPtr assignExpr = ExpressionPtr(new BinaryOperatorExpression('=', leftArg, state.GetVar(arg2)));
+
+			if (arg0 != 0xFF)
+				state.SetVar(arg0, assignExpr, true);
+			else
+				state.PushStatement(StatementPtr(new ExpressionStatement(assignExpr)));
+			break;
+		}
+		case OP_GETOUTER:
+			state.SetVar(arg0, ExpressionPtr(new LocalVariableExpression(m_OuterValues[arg1].name.GetString())));
+			break;
+
 // 		case OP_LOADFREEVAR:
 // 			state.SetVar(arg0, ExpressionPtr(new VariableExpression(m_OuterValues[arg1].name.GetString())));
 // 			break;
@@ -653,9 +668,7 @@ void NutFunction::DecompileStatement( VMState& state ) const
 // 			break;
 
 		case OP_APPENDARRAY:
-			{
-				DecompileAppendArray(state, arg0, arg1, (AppendArrayType)arg2, arg3);
-			}
+			DecompileAppendArray(state, arg0, arg1, (AppendArrayType)arg2, arg3);
 			break;
 
 // 		case OP_GETPARENT:

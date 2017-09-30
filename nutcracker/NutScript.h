@@ -22,7 +22,12 @@ public:
 private:
 	struct OuterValueInfo
 	{
-		int type;
+		enum SQOuterType
+		{
+			otLOCAL = 0,
+			otOUTER = 1
+		};
+		SQOuterType type;
 		SqObject src;
 		SqObject name;
 	};
