@@ -1696,17 +1696,7 @@ void NutFunction::GenerateFunctionSource( int n, std::wostream& out, const LStri
 	if (paramsCount > 0)
 		out << ' ';
 
-	out << ')';
-
-	if (!m_OuterValues.empty())
-	{
-		out << " : ( " << m_OuterValues[0].name.GetString();
-		for( size_t i = 1; i < m_OuterValues.size(); ++i)
-			out << ", " << m_OuterValues[i].name.GetString();
-		out << " )";
-	}
-
-	out << std::endl;
+	out << ')' << std::endl;
 
 	out << indent(n) << "{" << std::endl;
 
