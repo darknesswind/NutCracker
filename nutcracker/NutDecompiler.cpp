@@ -633,7 +633,7 @@ void NutFunction::DecompileStatement( VMState& state ) const
 		// *** OP_JNZ should not be matched - processed in do...while decompilation
 
 		case OP_JCMP:
-			DecompileForLoop(state, arg0, arg1, arg2, arg3);
+			DecompileJCMP(state, arg0, arg1, arg2, arg3);
 			break;
 
 		case OP_JZ:
@@ -1278,7 +1278,7 @@ void NutFunction::DecompileDoWhileLoop( VMState& state, int jumpAddress ) const
 	state.m_BlockState = prevBlockState;
 }
 
-void NutFunction::DecompileForLoop(VMState& state, int end, int offsetIp, int iter, int cmpOp) const
+void NutFunction::DecompileJCMP(VMState& state, int end, int offsetIp, int iter, int cmpOp) const
 {
 	ExpressionPtr iterExp = state.GetVar(iter);
 	ExpressionPtr conditionExp = ExpressionPtr(new BinaryOperatorExpression(ComparisionOpcodeNames[cmpOp], iterExp, state.GetVar(end)));
@@ -1296,12 +1296,22 @@ void NutFunction::DecompileForLoop(VMState& state, int end, int offsetIp, int it
 	int loopEndIp = state.IP() + offsetIp;
 
 	// Decompile loop block
+	bool bHasEndingJump = false;
+	int elseEnd = 0;
+	VMState::StackCopyPtr stackCopy = state.CloneStack();
+
 	while (!state.EndOfInstructions() && state.IP() < loopEndIp)
 	{
-		if (state.IP() == (loopEndIp - 1) && m_Instructions[state.IP()].op == OP_JMP && m_Instructions[state.IP()].arg1 < 1)
+		if (state.IP() == (loopEndIp - 1) && m_Instructions[state.IP()].op == OP_JMP)
 		{
 			// Skip loop ending JMP
+			int jmpOffset = m_Instructions[state.IP()].arg1;
 			state.NextInstruction();
+
+			if (jmpOffset < 1)
+				bHasEndingJump = true;
+			else
+				elseEnd = state.IP() + jmpOffset;
 		}
 		else
 		{
@@ -1309,13 +1319,43 @@ void NutFunction::DecompileForLoop(VMState& state, int end, int offsetIp, int it
 		}
 	}
 	
-	LoopBaseStatementPtr stat = LoopBaseStatementPtr(new ForStatement(nullptr, conditionExp, nullptr, state.PopBlock(block)));
-	stat->SetLoopBlock(state.m_BlockState);
+	if (bHasEndingJump)
+	{
+		LoopBaseStatementPtr stat = LoopBaseStatementPtr(new ForStatement(nullptr, conditionExp, nullptr, state.PopBlock(block)));
+		stat->SetLoopBlock(state.m_BlockState);
 
-	// Pop block state
-	state.m_BlockState = prevBlockState;
+		// Pop block state
+		state.m_BlockState = prevBlockState;
 
-	state.PushStatement(stat);
+		state.PushStatement(stat);
+	}
+	else // may be if-else
+	{
+		state.m_BlockState.inLoop = 0;
+
+		BlockStatementPtr ifStat = state.PopBlock(block);
+		BlockStatementPtr elseStat = nullptr;
+		if (elseEnd > state.IP())
+		{
+			state.m_BlockState.blockStart = state.IP();
+			state.m_BlockState.blockEnd = elseEnd;
+
+			BlockStatementPtr block = state.PushBlock();
+			state.SwapStacks(stackCopy);
+			while (!state.EndOfInstructions() && state.IP() < elseEnd)
+			{
+				DecompileStatement(state);
+			}
+			elseStat = state.PopBlock(block);
+		}
+
+		StatementPtr stat = StatementPtr(new IfStatement(conditionExp, ifStat, elseStat));
+
+		// Pop block state
+		state.m_BlockState = prevBlockState;
+
+		state.PushStatement(stat);
+	}
 }
 
 // ***************************************************************************************************************
