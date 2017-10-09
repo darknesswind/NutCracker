@@ -115,12 +115,12 @@ public:
 		ExpressionPtr expression;
 		std::vector<StatementPtr> pendingStatements;
 	};
+	typedef shared_ptr< std::vector<StackElement> > StackCopyPtr;
 	struct DoWhileBlockInfo
 	{
 		int beginPos;
 		int endPos;
 	};
-	typedef shared_ptr< std::vector<StackElement> > StackCopyPtr;
 
 private:
 	int m_IP;
@@ -148,8 +148,9 @@ public:
 	{
 		for (int i = 1; i < (int)m_Parent.m_Instructions.size(); ++i)
 		{
-			const NutFunction::Instruction& prevInst = m_Parent.m_Instructions[i - 1];
-			if (prevInst.op == OP_JCMP && prevInst.arg1 == 1)
+			const int whilePos = i - 1;
+			const NutFunction::Instruction& prevInst = m_Parent.m_Instructions[whilePos];
+			if ((prevInst.op == OP_JCMP || prevInst.op == OP_JZ) && prevInst.arg1 == 1)
 			{
 				const NutFunction::Instruction& curInst = m_Parent.m_Instructions[i];
 				if (curInst.op == OP_JMP && curInst.arg1 < 0)
@@ -157,6 +158,10 @@ public:
 					DoWhileBlockInfo info = { 0 };
 					info.endPos = i + 1;
 					info.beginPos = info.endPos + curInst.arg1;
+					// must jump before the OP_JZ or OP_JCMP
+					if (info.beginPos >= whilePos)
+						continue;
+
 					m_doWhileInfos[info.beginPos] = info;
 				}
 			}
@@ -1272,16 +1277,23 @@ void NutFunction::DecompileDoWhileLoop( VMState& state, int endPos) const
 
 	while (state.IP() < endPos && !state.EndOfInstructions())
 	{
-		if (state.IP() == endPos - 2 && m_Instructions[state.IP()].op == OP_JCMP)
+		if (state.IP() == endPos - 2 )
 		{
-			const Instruction& jcmp = m_Instructions[state.IP()];
-			unsigned char condVar = static_cast<unsigned char>(jcmp.arg0);
-			unsigned char iterVar = static_cast<unsigned char>(jcmp.arg2);
-			unsigned char cmpOp = static_cast<unsigned char>(jcmp.arg3);
+			const Instruction& inst = m_Instructions[state.IP()];
+			if (inst.op == OP_JCMP)
+			{
+				unsigned char condVar = static_cast<unsigned char>(inst.arg0);
+				unsigned char iterVar = static_cast<unsigned char>(inst.arg2);
+				unsigned char cmpOp = static_cast<unsigned char>(inst.arg3);
 
-			ExpressionPtr iterExp = state.GetVar(iterVar);
-			condition = ExpressionPtr(new BinaryOperatorExpression(ComparisionOpcodeNames[cmpOp], iterExp, state.GetVar(condVar)));
-			// skip OP_JCMP & OP_JMP
+				ExpressionPtr iterExp = state.GetVar(iterVar);
+				condition = ExpressionPtr(new BinaryOperatorExpression(ComparisionOpcodeNames[cmpOp], iterExp, state.GetVar(condVar)));
+			}
+			else if (inst.op == OP_JZ)
+			{
+				condition = state.GetVar(inst.arg0);
+			}
+			// skip while instruction
 			state.NextInstruction();
 			state.NextInstruction();
 		}
