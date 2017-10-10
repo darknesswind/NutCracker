@@ -1090,9 +1090,10 @@ void NutFunction::DecompileStatement( VMState& state ) const
 // ***************************************************************************************************************
 void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int arg1 ) const
 {
-	if (arg1 > 0 && (state.IP() + arg1) < (int)m_Instructions.size() && (state.IP() + arg1) <= state.m_BlockState.blockEnd)
+	int destIp = state.IP() + arg1;
+	if (arg1 > 0 && destIp < (int)m_Instructions.size() && destIp <= state.m_BlockState.blockEnd)
 	{
-		const Instruction& lastBlockOp = m_Instructions[state.IP() + arg1 - 1];
+		const Instruction& lastBlockOp = m_Instructions[destIp - 1];
 		if (lastBlockOp.op == OP_JMP && lastBlockOp.arg1 < -arg1)
 		{
 			// Found conditional block with reverse jump at the end - potentially while loop
@@ -1101,20 +1102,19 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 			if (state.m_BlockState.inLoop && state.m_BlockState.inLoop != BlockState::DoWhileLoop)
 				blockLimit += 1;
 				
-			if ((state.IP() + arg1 + lastBlockOp.arg1) >= blockLimit)
+			if ((destIp + lastBlockOp.arg1) >= blockLimit)
 			{
 				// While block found - push loop block
 				BlockState prevBlockState = state.m_BlockState;
 				state.m_BlockState.inLoop = BlockState::WhileLoop;
 				state.m_BlockState.inSwitch = 0;
-				state.m_BlockState.blockStart = state.IP() + arg1 + lastBlockOp.arg1;
-				state.m_BlockState.blockEnd = state.IP() + arg1 - 1;
+				state.m_BlockState.blockStart = destIp + lastBlockOp.arg1;
+				state.m_BlockState.blockEnd = destIp - 1;
 				state.m_BlockState.parent = &prevBlockState;
 
 				BlockStatementPtr block = state.PushBlock();
 				ExpressionPtr condition = state.GetVar(arg0);
 
-				int destIp = state.IP() + arg1;
 				while(state.IP() < destIp && !state.EndOfInstructions())
 				{
 					if (state.IP() == (destIp - 1) && m_Instructions[state.IP()].op == OP_JMP && m_Instructions[state.IP()].arg1 < 0)
@@ -1142,9 +1142,9 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 
 
 	// Search for switch chain pattern
-	if (arg1 > 0 && (state.IP() + arg1) <= state.m_BlockState.blockEnd)
+	if (arg1 > 0 && destIp <= state.m_BlockState.blockEnd)
 	{
-		int pos1 = state.IP() + arg1 - 1;
+		int pos1 = destIp - 1;
 		if (pos1 <= state.m_BlockState.blockEnd && m_Instructions[pos1].op == OP_JMP && m_Instructions[pos1].arg1 > 0)
 		{
 			int pos2 = pos1 + m_Instructions[pos1].arg1;  // +1 -1
@@ -1158,7 +1158,7 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 	}
 
 
-	if (arg1 >= 0 && (state.IP() + arg1) <= state.m_BlockState.blockEnd)
+	if (arg1 >= 0 && destIp <= state.m_BlockState.blockEnd)
 	{
 		// if instruction
 		BlockStatementPtr block = state.PushBlock();
@@ -1168,7 +1168,7 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 		ExpressionPtr condition = state.GetVar(arg0);
 
 		//bool elseMatch = false;
-		int ifBlockEndIp = state.IP() + arg1;
+		int ifBlockEndIp = destIp;
 		int elseBlockEndIp = 0;
 		bool gotElseBlock = false;
 			
@@ -1315,20 +1315,28 @@ void NutFunction::DecompileDoWhileLoop( VMState& state, int endPos) const
 	state.m_BlockState = prevBlockState;
 }
 
+// if (IsFalse(conditionExp)) ip += offsetIp;
 void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int iterVar, int cmpOp) const
 {
 	ExpressionPtr iterExp = state.GetVar(iterVar);
 	ExpressionPtr conditionExp = ExpressionPtr(new BinaryOperatorExpression(ComparisionOpcodeNames[cmpOp], iterExp, state.GetVar(condVar)));
-	if (state.m_BlockState.inLoop || state.m_BlockState.inSwitch) // if-break
+	bool bCanBreak = (state.m_BlockState.inLoop || state.m_BlockState.inSwitch);
+	int destIP = state.IP() + offsetIp;
+	if (destIP > state.m_BlockState.blockEnd)
 	{
-		int newEnd = state.IP() + offsetIp - 1;
-		if (newEnd > state.m_BlockState.blockEnd)
-		{
-			StatementPtr stat = StatementPtr(new IfStatement(conditionExp, StatementPtr(new BreakStatement()), nullptr));
-			state.PushStatement(stat);
-			return;
-		}
+		state.PushUnknownOpcode();
+		return;
 	}
+// 	if (state.m_BlockState.inLoop || state.m_BlockState.inSwitch) // if-break
+// 	{
+// 		int trueBlockEnd = destIP - 1;
+// 		if (trueBlockEnd > state.m_BlockState.blockEnd)
+// 		{
+// 			StatementPtr stat = StatementPtr(new IfStatement(conditionExp, StatementPtr(new BreakStatement()), nullptr));
+// 			state.PushStatement(stat);
+// 			return;
+// 		}
+// 	}
 	BlockStatementPtr block = state.PushBlock();
 
 	// While block found - push loop block
@@ -1336,28 +1344,33 @@ void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int i
 	state.m_BlockState.inLoop = BlockState::CmpForLoop;
 	state.m_BlockState.inSwitch = 0;
 	state.m_BlockState.blockStart = state.IP() - 1;
-	state.m_BlockState.blockEnd = state.IP() + offsetIp - 1;
+	state.m_BlockState.blockEnd = destIP - 1;
 	state.m_BlockState.parent = &prevBlockState;
 
-	int loopEndIp = state.IP() + offsetIp;
 
 	// Decompile loop block
 	bool bHasEndingJump = false;
 	int elseEnd = 0;
 	VMState::StackCopyPtr stackCopy = state.CloneStack();
 
-	while (!state.EndOfInstructions() && state.IP() < loopEndIp)
+	while (!state.EndOfInstructions() && state.IP() < destIP)
 	{
-		if (state.IP() == (loopEndIp - 1) && m_Instructions[state.IP()].op == OP_JMP)
+		if (state.IP() == (destIP - 1) && m_Instructions[state.IP()].op == OP_JMP)
 		{
 			// Skip loop ending JMP
 			int jmpOffset = m_Instructions[state.IP()].arg1;
 			state.NextInstruction();
 
 			if (jmpOffset < 1)
+			{
 				bHasEndingJump = true;
+			}
 			else
+			{
 				elseEnd = state.IP() + jmpOffset;
+				if (bCanBreak && elseEnd > prevBlockState.blockEnd)
+					state.PushStatement(StatementPtr(new BreakStatement()));
+			}
 		}
 		else
 		{
@@ -1381,7 +1394,7 @@ void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int i
 
 		BlockStatementPtr ifStat = state.PopBlock(block);
 		BlockStatementPtr elseStat = nullptr;
-		if (elseEnd > state.IP())
+		if (elseEnd > state.IP() && elseEnd <= prevBlockState.blockEnd)
 		{
 			state.m_BlockState.blockStart = state.IP();
 			state.m_BlockState.blockEnd = elseEnd;
