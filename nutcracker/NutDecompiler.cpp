@@ -119,7 +119,7 @@ public:
 	struct DoWhileBlockInfo
 	{
 		int beginPos;
-		int endPos;
+		std::vector<int> endPos;
 	};
 
 private:
@@ -155,14 +155,15 @@ public:
 				const NutFunction::Instruction& curInst = m_Parent.m_Instructions[i];
 				if (curInst.op == OP_JMP && curInst.arg1 < 0)
 				{
-					DoWhileBlockInfo info = { 0 };
-					info.endPos = i + 1;
-					info.beginPos = info.endPos + curInst.arg1;
+					int endPos = i + 1;
+					int beginPos = endPos + curInst.arg1;
 					// must jump before the OP_JZ or OP_JCMP
-					if (info.beginPos >= whilePos)
+					if (beginPos >= whilePos)
 						continue;
 
-					m_doWhileInfos[info.beginPos] = info;
+					DoWhileBlockInfo& info = m_doWhileInfos[beginPos];
+					info.beginPos = beginPos;
+					info.endPos.push_back(endPos);
 				}
 			}
 		}
@@ -174,8 +175,11 @@ public:
 		if (iter == m_doWhileInfos.end())
 			return -1;
 
-		int endpos = iter->second.endPos;
-		m_doWhileInfos.erase(iter);
+		std::vector<int>& poslist = iter->second.endPos;
+		int endpos = poslist.back();
+		poslist.pop_back();
+		if (poslist.empty())
+			m_doWhileInfos.erase(iter);
 		return endpos;
 	}
 
@@ -1315,7 +1319,16 @@ void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int i
 {
 	ExpressionPtr iterExp = state.GetVar(iterVar);
 	ExpressionPtr conditionExp = ExpressionPtr(new BinaryOperatorExpression(ComparisionOpcodeNames[cmpOp], iterExp, state.GetVar(condVar)));
-
+	if (state.m_BlockState.inLoop || state.m_BlockState.inSwitch) // if-break
+	{
+		int newEnd = state.IP() + offsetIp - 1;
+		if (newEnd > state.m_BlockState.blockEnd)
+		{
+			StatementPtr stat = StatementPtr(new IfStatement(conditionExp, StatementPtr(new BreakStatement()), nullptr));
+			state.PushStatement(stat);
+			return;
+		}
+	}
 	BlockStatementPtr block = state.PushBlock();
 
 	// While block found - push loop block

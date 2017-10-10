@@ -320,7 +320,7 @@ typedef struct tagNutFunction
     int m_StackSize;
     char m_IsGenerator;
     int m_VarParams;
-} NutFunction;
+} NutFunction <read=ReadNutFunction>;
 
 struct NutFunctions (int size)
 {
@@ -330,7 +330,10 @@ void allocFunctions(int size)
 {
     NutFunctions m_Functions(size);
 }
-
+wstring ReadNutFunction(NutFunction& func)
+{
+    return ReadSQObject(func.m_Name);
+}
 
 struct tagPART
 {
