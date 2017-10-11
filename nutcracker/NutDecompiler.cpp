@@ -121,6 +121,11 @@ public:
 		int beginPos;
 		std::vector<int> endPos;
 	};
+	struct Block
+	{
+		int begin;
+		int end;
+	};
 
 private:
 	int m_IP;
@@ -146,16 +151,16 @@ public:
 
 	void PreprocessDoWhileInfo()
 	{
-		for (int i = 1; i < (int)m_Parent.m_Instructions.size(); ++i)
+		for (int ip = 1; ip < (int)m_Parent.m_Instructions.size(); ++ip)
 		{
-			const int whilePos = i - 1;
+			const int whilePos = ip - 1;
 			const NutFunction::Instruction& prevInst = m_Parent.m_Instructions[whilePos];
 			if ((prevInst.op == OP_JCMP || prevInst.op == OP_JZ) && prevInst.arg1 == 1)
 			{
-				const NutFunction::Instruction& curInst = m_Parent.m_Instructions[i];
+				const NutFunction::Instruction& curInst = m_Parent.m_Instructions[ip];
 				if (curInst.op == OP_JMP && curInst.arg1 < 0)
 				{
-					int endPos = i + 1;
+					int endPos = ip;
 					int beginPos = endPos + curInst.arg1;
 					// must jump before the OP_JZ or OP_JCMP
 					if (beginPos >= whilePos)
@@ -164,6 +169,32 @@ public:
 					DoWhileBlockInfo& info = m_doWhileInfos[beginPos];
 					info.beginPos = beginPos;
 					info.endPos.push_back(endPos);
+				}
+			}
+		}
+
+		std::vector<Block> blocks;
+		for (int ip = 0; ip < (int)m_Parent.m_Instructions.size(); ++ip)
+		{
+			if (!blocks.empty() && ip > blocks.back().end)
+				blocks.pop_back();
+
+			auto iter = m_doWhileInfos.find(ip);
+			if (iter != m_doWhileInfos.end())
+			{
+				std::vector<int>& poslist = iter->second.endPos;
+				for (auto itpos = poslist.rbegin(); itpos != poslist.rend(); ++itpos)
+					blocks.emplace_back(Block{ ip, *itpos });
+			}
+
+			const NutFunction::Instruction& curInst = m_Parent.m_Instructions[ip];
+			if (curInst.op == OP_JCMP)
+			{
+				int destIP = ip + curInst.arg1;
+				while (!blocks.empty() && destIP > blocks.back().end)
+				{
+					PopDoWhileEndPos(blocks.back().begin);
+					blocks.pop_back();
 				}
 			}
 		}
@@ -1088,20 +1119,20 @@ void NutFunction::DecompileStatement( VMState& state ) const
 
 
 // ***************************************************************************************************************
-void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int arg1 ) const
+bool NutFunction::DecompileLoopJumpInstruction(VMState& state, ExpressionPtr condPtr, int offset) const
 {
-	int destIp = state.IP() + arg1;
-	if (arg1 > 0 && destIp < (int)m_Instructions.size() && destIp <= state.m_BlockState.blockEnd)
+	int destIp = state.IP() + offset;
+	if (offset > 0 && destIp < (int)m_Instructions.size() && destIp <= state.m_BlockState.blockEnd)
 	{
 		const Instruction& lastBlockOp = m_Instructions[destIp - 1];
-		if (lastBlockOp.op == OP_JMP && lastBlockOp.arg1 < -arg1)
+		if (lastBlockOp.op == OP_JMP && lastBlockOp.arg1 < -offset)
 		{
 			// Found conditional block with reverse jump at the end - potentially while loop
 			// Check if last JMP is inside oure current block
 			int blockLimit = state.m_BlockState.blockStart;
 			if (state.m_BlockState.inLoop && state.m_BlockState.inLoop != BlockState::DoWhileLoop)
 				blockLimit += 1;
-				
+
 			if (state.m_BlockState.inLoop &&
 				(destIp + lastBlockOp.arg1) == state.m_BlockState.blockStart)
 			{
@@ -1118,10 +1149,9 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 						state.NextInstruction();
 					state.NextInstruction(); // skip OP_JMP (continue)
 
-					ExpressionPtr condition = state.GetVar(arg0);
 					StatementPtr continueStat = StatementPtr(new ContinueStatement());
-					state.PushStatement(StatementPtr(new IfStatement(condition, continueStat, nullptr)));
-					return;
+					state.PushStatement(StatementPtr(new IfStatement(condPtr, continueStat, nullptr)));
+					return true;
 				}
 			}
 
@@ -1136,9 +1166,8 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 				state.m_BlockState.parent = &prevBlockState;
 
 				BlockStatementPtr block = state.PushBlock();
-				ExpressionPtr condition = state.GetVar(arg0);
 
-				while(state.IP() < destIp && !state.EndOfInstructions())
+				while (state.IP() < destIp && !state.EndOfInstructions())
 				{
 					if (state.IP() == (destIp - 1) && m_Instructions[state.IP()].op == OP_JMP && m_Instructions[state.IP()].arg1 < 0)
 					{
@@ -1151,18 +1180,26 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 					}
 				}
 
-				LoopBaseStatementPtr stat = LoopBaseStatementPtr(new WhileStatement(condition, state.PopBlock(block)));
+				LoopBaseStatementPtr stat = LoopBaseStatementPtr(new WhileStatement(condPtr, state.PopBlock(block)));
 				stat->SetLoopBlock(state.m_BlockState);
 				state.PushStatement(stat);
 
 				// Pop block state
 				state.m_BlockState = prevBlockState;
 
-				return;
+				return true;
 			}
 		}
 	}
+	return false;
+}
 
+void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int arg1 ) const
+{
+	int destIp = state.IP() + arg1;
+	ExpressionPtr condition = state.GetVar(arg0);
+	if (DecompileLoopJumpInstruction(state, condition, arg1))
+		return;
 
 	// Search for switch chain pattern
 	if (arg1 > 0 && destIp <= state.m_BlockState.blockEnd)
@@ -1187,8 +1224,6 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 		BlockStatementPtr block = state.PushBlock();
 		BlockStatementPtr ifBlock, elseBlock;
 		VMState::StackCopyPtr stackCopy;
-
-		ExpressionPtr condition = state.GetVar(arg0);
 
 		//bool elseMatch = false;
 		int ifBlockEndIp = destIp;
@@ -1296,15 +1331,15 @@ void NutFunction::DecompileDoWhileLoop( VMState& state, int endPos) const
 	state.m_BlockState.inLoop = BlockState::DoWhileLoop;
 	state.m_BlockState.inSwitch = 0;
 	state.m_BlockState.blockStart = state.IP();
-	state.m_BlockState.blockEnd = endPos - 1;
+	state.m_BlockState.blockEnd = endPos;
 	state.m_BlockState.parent = &prevBlockState;
 
 	BlockStatementPtr block = state.PushBlock();
 	ExpressionPtr condition;
 
-	while (state.IP() < endPos && !state.EndOfInstructions())
+	while (state.IP() < endPos + 1 && !state.EndOfInstructions())
 	{
-		if (state.IP() == endPos - 2 )
+		if (state.IP() == endPos - 1 )
 		{
 			const Instruction& inst = m_Instructions[state.IP()];
 			if (inst.op == OP_JCMP)
@@ -1345,11 +1380,14 @@ void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int i
 	ExpressionPtr conditionExp = ExpressionPtr(new BinaryOperatorExpression(ComparisionOpcodeNames[cmpOp], iterExp, state.GetVar(condVar)));
 	bool bCanBreak = (state.m_BlockState.inLoop || state.m_BlockState.inSwitch);
 	int destIP = state.IP() + offsetIp;
-	if (destIP > state.m_BlockState.blockEnd)
-	{
-		state.PushUnknownOpcode();
+	if (DecompileLoopJumpInstruction(state, conditionExp, offsetIp))
 		return;
-	}
+
+// 	if (destIP > state.m_BlockState.blockEnd)
+// 	{
+// 		state.PushUnknownOpcode();
+// 		return;
+// 	}
 // 	if (state.m_BlockState.inLoop || state.m_BlockState.inSwitch) // if-break
 // 	{
 // 		int trueBlockEnd = destIP - 1;
@@ -1360,28 +1398,28 @@ void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int i
 // 			return;
 // 		}
 // 	}
-	const Instruction& lastBlockOp = m_Instructions[destIP - 1];
-	if (state.m_BlockState.inLoop && lastBlockOp.op == OP_JMP &&
-		(destIP + lastBlockOp.arg1) == state.m_BlockState.blockStart)
-	{
-		bool bHasLineInfo = !m_LineInfos.empty();
-		bool bContinueInst = false;
-		if (bHasLineInfo && m_Instructions[state.IP()].op == OP_LINE)
-			bContinueInst = (state.IP() + 1 == destIP - 1);
-		else
-			bContinueInst = (state.IP() == destIP - 1);
-
-		if (bContinueInst)
-		{
-			if (bHasLineInfo) // skip OP_LINE
-				state.NextInstruction();
-			state.NextInstruction(); // skip OP_JMP (continue)
-
-			StatementPtr continueStat = StatementPtr(new ContinueStatement());
-			state.PushStatement(StatementPtr(new IfStatement(conditionExp, continueStat, nullptr)));
-			return;
-		}
-	}
+// 	const Instruction& lastBlockOp = m_Instructions[destIP - 1];
+// 	if (state.m_BlockState.inLoop && lastBlockOp.op == OP_JMP &&
+// 		(destIP + lastBlockOp.arg1) == state.m_BlockState.blockStart)
+// 	{
+// 		bool bHasLineInfo = !m_LineInfos.empty();
+// 		bool bContinueInst = false;
+// 		if (bHasLineInfo && m_Instructions[state.IP()].op == OP_LINE)
+// 			bContinueInst = (state.IP() + 1 == destIP - 1);
+// 		else
+// 			bContinueInst = (state.IP() == destIP - 1);
+// 
+// 		if (bContinueInst)
+// 		{
+// 			if (bHasLineInfo) // skip OP_LINE
+// 				state.NextInstruction();
+// 			state.NextInstruction(); // skip OP_JMP (continue)
+// 
+// 			StatementPtr continueStat = StatementPtr(new ContinueStatement());
+// 			state.PushStatement(StatementPtr(new IfStatement(conditionExp, continueStat, nullptr)));
+// 			return;
+// 		}
+// 	}
 
 	BlockStatementPtr block = state.PushBlock();
 

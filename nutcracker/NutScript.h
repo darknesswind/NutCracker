@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "SqObject.h"
-
+#include "Expressions.h"
 extern bool g_DebugMode;
 
 // ****************************************************************************************************************************
@@ -69,6 +69,7 @@ private:
 
 	void DecompileStatement( VMState& state ) const;
 	void DecompileJumpZeroInstruction( VMState& state, int arg0, int arg1 ) const;
+	bool DecompileLoopJumpInstruction(VMState& state, ExpressionPtr condPtr, int offset) const;
 	void DecompileJumpInstruction( VMState& state, int arg1 ) const;
 	void DecompileDoWhileLoop( VMState& state, int jumpAddress ) const;
 	void DecompileSwitchBlock( VMState& state ) const;
