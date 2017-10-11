@@ -1102,6 +1102,29 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 			if (state.m_BlockState.inLoop && state.m_BlockState.inLoop != BlockState::DoWhileLoop)
 				blockLimit += 1;
 				
+			if (state.m_BlockState.inLoop &&
+				(destIp + lastBlockOp.arg1) == state.m_BlockState.blockStart)
+			{
+				bool bHasLineInfo = !m_LineInfos.empty();
+				bool bContinueInst = false;
+				if (bHasLineInfo && m_Instructions[state.IP()].op == OP_LINE)
+					bContinueInst = (state.IP() + 1 == destIp - 1);
+				else
+					bContinueInst = (state.IP() == destIp - 1);
+
+				if (bContinueInst)
+				{
+					if (bHasLineInfo) // skip OP_LINE
+						state.NextInstruction();
+					state.NextInstruction(); // skip OP_JMP (continue)
+
+					ExpressionPtr condition = state.GetVar(arg0);
+					StatementPtr continueStat = StatementPtr(new ContinueStatement());
+					state.PushStatement(StatementPtr(new IfStatement(condition, continueStat, nullptr)));
+					return;
+				}
+			}
+
 			if ((destIp + lastBlockOp.arg1) >= blockLimit)
 			{
 				// While block found - push loop block
@@ -1337,6 +1360,29 @@ void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int i
 // 			return;
 // 		}
 // 	}
+	const Instruction& lastBlockOp = m_Instructions[destIP - 1];
+	if (state.m_BlockState.inLoop && lastBlockOp.op == OP_JMP &&
+		(destIP + lastBlockOp.arg1) == state.m_BlockState.blockStart)
+	{
+		bool bHasLineInfo = !m_LineInfos.empty();
+		bool bContinueInst = false;
+		if (bHasLineInfo && m_Instructions[state.IP()].op == OP_LINE)
+			bContinueInst = (state.IP() + 1 == destIP - 1);
+		else
+			bContinueInst = (state.IP() == destIP - 1);
+
+		if (bContinueInst)
+		{
+			if (bHasLineInfo) // skip OP_LINE
+				state.NextInstruction();
+			state.NextInstruction(); // skip OP_JMP (continue)
+
+			StatementPtr continueStat = StatementPtr(new ContinueStatement());
+			state.PushStatement(StatementPtr(new IfStatement(conditionExp, continueStat, nullptr)));
+			return;
+		}
+	}
+
 	BlockStatementPtr block = state.PushBlock();
 
 	// While block found - push loop block
