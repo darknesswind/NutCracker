@@ -254,6 +254,9 @@ string ReadInstruction(Instruction& dat)
     case _OP_FOREACH:
         SPrintf(s, "op_foreach: %d(%d)", dat.ip + dat.arg1.arg1 + 1, dat.arg1.arg1);
         break;
+    case _OP_LINE:
+        SPrintf(s, "op_line: %d", dat.arg1.arg1);
+        break;
     default:
         s = EnumToString(dat.op);
         break;

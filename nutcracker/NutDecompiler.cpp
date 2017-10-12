@@ -1122,6 +1122,8 @@ void NutFunction::DecompileStatement( VMState& state ) const
 			state.SetVar(arg0, ExpressionPtr(new BinaryOperatorExpression('%', state.GetVar(arg2), state.GetVar(arg1))));
 			break;
 		case OP_LINE:	// mark line number;
+			if (g_DebugMode)
+				state.PushStatement(StatementPtr(new CommentStatement(LStrBuilder("line %1").arg(arg1).apply())));
 			break;
 		default:
 			state.PushUnknownOpcode();
@@ -1188,7 +1190,7 @@ bool NutFunction::DecompileLoopJumpInstruction(VMState& state, ExpressionPtr con
 
 				while (state.IP() < destIp && !state.EndOfInstructions())
 				{
-					assert(state.IP() <= prevBlockState.blockEnd);
+					assert(state.IP() < prevBlockState.blockEnd);
 					if (state.IP() == (destIp - 1) && m_Instructions[state.IP()].op == OP_JMP && m_Instructions[state.IP()].arg1 < 0)
 					{
 						// Skip loop jump
@@ -1275,7 +1277,7 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 		// Parse if block instructions
 		while(state.IP() < ifBlockEndIp && !state.EndOfInstructions())
 		{
-			assert(state.IP() <= prevBlockState.blockEnd);
+			assert(state.IP() < prevBlockState.blockEnd);
 			if (gotElseBlock && m_Instructions[state.IP()].op == OP_JMP && state.IP() == (ifBlockEndIp - 1))
 			{
 				// Skip else block jump
@@ -1304,7 +1306,7 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 
 			while(state.IP() < elseBlockEndIp && !state.EndOfInstructions())
 			{
-				assert(state.IP() <= prevBlockState.blockEnd);
+				assert(state.IP() < prevBlockState.blockEnd);
 				DecompileStatement(state);
 			}
 
@@ -1344,7 +1346,6 @@ void NutFunction::DecompileJumpZeroInstruction( VMState& state, int arg0, int ar
 	{
 		if (state.m_BlockState.inLoop || state.m_BlockState.inSwitch)
 		{
-//			state.PushStatement(StatementPtr(new CommentStatement(L"false break;")));
 			ExpressionPtr newCond = ExpressionPtr(new UnaryOperatorExpression('!', condition));
 			StatementPtr breakStat = StatementPtr(new BreakStatement());
 			state.PushStatement(StatementPtr(new IfStatement(newCond, breakStat, nullptr)));
@@ -1434,9 +1435,8 @@ void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int i
 	state.m_BlockState.inLoop = BlockState::CmpForLoop;
 	state.m_BlockState.inSwitch = 0;
 	state.m_BlockState.blockStart = state.IP() - 1;
-	state.m_BlockState.blockEnd = destIP - 1;
+	state.m_BlockState.blockEnd = destIP;
 	state.m_BlockState.parent = &prevBlockState;
-
 
 	// Decompile loop block
 	bool bHasEndingJump = false;
@@ -1445,7 +1445,7 @@ void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int i
 
 	while (!state.EndOfInstructions() && state.IP() < destIP)
 	{
-		assert(state.IP() <= prevBlockState.blockEnd);
+		assert(state.IP() < prevBlockState.blockEnd);
 		if (state.IP() == (destIP - 1) && m_Instructions[state.IP()].op == OP_JMP)
 		{
 			// Skip loop ending JMP
@@ -1494,18 +1494,36 @@ void NutFunction::DecompileJCMP(VMState& state, int condVar, int offsetIp, int i
 			state.SwapStacks(stackCopy);
 			while (!state.EndOfInstructions() && state.IP() < elseEnd)
 			{
-				assert(state.IP() <= prevBlockState.blockEnd);
+				assert(state.IP() < prevBlockState.blockEnd);
 				DecompileStatement(state);
 			}
 			elseStat = state.PopBlock(block);
 		}
 
-		StatementPtr stat = StatementPtr(new IfStatement(conditionExp, ifStat, elseStat));
+		StatementPtr ifStatement = StatementPtr(new IfStatement(conditionExp, ifStat, elseStat));
 
 		// Pop block state
 		state.m_BlockState = prevBlockState;
 
-		state.PushStatement(stat);
+		if (elseStat != nullptr)
+		{
+			int ifBlockEndIp = destIP;
+			int elseBlockEndIp = elseEnd;
+			if (ifBlockEndIp > 2 && m_Instructions[ifBlockEndIp - 2].op != OP_JZ && m_Instructions[elseBlockEndIp - 1].op != OP_JMP)
+			{
+				int target1 = static_cast<unsigned char>(m_Instructions[ifBlockEndIp - 2].arg0);
+				int target2 = static_cast<unsigned char>(m_Instructions[elseBlockEndIp - 1].arg0);
+
+				if ((target1 == target2) && (target1 < m_StackSize) && state.AtStack(target1) && (state.AtStack(target1)->GetType() != Exp_LocalVariable) &&
+					stackCopy->at(target1).expression && stackCopy->at(target1).expression->GetType() != Exp_LocalVariable)
+				{
+					// Block match condition operator - try to merge destination stack variables
+					state.MergeStackVariable(conditionExp, target1, stackCopy->at(target1), ifStatement);
+				}
+			}
+		}
+
+		state.PushStatement(ifStatement);
 	}
 }
 
