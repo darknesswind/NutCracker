@@ -1,7 +1,7 @@
 //--------------------------------------
 //--- 010 Editor v5.0 Binary Template
 //
-// File:
+// File: *.cnut
 // Author:
 // Revision:
 // Purpose: SQuirrel 3.0 nut file
@@ -226,6 +226,7 @@ struct LineInfo
 
 typedef struct tagInstruction
 {
+    local int ip;
 	union tagArg1
 	{
 		int arg1;
@@ -238,7 +239,26 @@ typedef struct tagInstruction
 
 string ReadInstruction(Instruction& dat)
 {
-    return EnumToString(dat.op);
+    string s;
+    switch (dat.op)
+    {
+    case _OP_JMP:
+        SPrintf(s, "op_jmp: %d(%d)", dat.ip + dat.arg1.arg1 + 1, dat.arg1.arg1);
+        break;
+    case _OP_JCMP:
+        SPrintf(s, "op_jcmp: %d(%d)", dat.ip + dat.arg1.arg1 + 1, dat.arg1.arg1);
+        break;
+    case _OP_JZ:
+        SPrintf(s, "op_jz: %d(%d)", dat.ip + dat.arg1.arg1 + 1, dat.arg1.arg1);
+        break;
+    case _OP_FOREACH:
+        SPrintf(s, "op_foreach: %d(%d)", dat.ip + dat.arg1.arg1 + 1, dat.arg1.arg1);
+        break;
+    default:
+        s = EnumToString(dat.op);
+        break;
+    }
+    return s;
 }
 
 struct Literals (int size)
@@ -267,7 +287,10 @@ struct DefaultParams (int size)
 };
 struct Instructions (int size)
 {
-    Instruction m_Instructions[nInstructions] <optimize=false>;
+    Instruction m_Instructions[size] <optimize=false>;
+    local int i = 0;
+    for (i = 0; i < size; ++i)
+        m_Instructions[i].ip = i;
 };
 typedef struct tagNutFunction
 {
