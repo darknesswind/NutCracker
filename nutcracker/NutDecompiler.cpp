@@ -1042,6 +1042,7 @@ void NutFunction::DecompileStatement( VMState& state ) const
 					attributes = state.GetVar(arg2);
 
 				state.SetVar(arg0, ExpressionPtr(new NewClassExpression(baseClass, attributes)));
+				break;
 			}
 			default:
 				assert(0);
